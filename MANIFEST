@@ -1,0 +1,22 @@
+Build.PL
+lib/Net/Async/IRC.pm
+lib/Net/Async/IRC/Message.pm
+LICENSE
+Makefile.PL
+MANIFEST			This list of files
+META.yml
+README
+t/01message.t
+t/02message-splitprefix.t
+t/03message-argnames.t
+t/10client-basic.t
+t/11client-pingpong.t
+t/12client-connect.t
+t/13client-isupport.t
+t/14client-hints.t
+t/15client-text.t
+t/16client-chanmodes.t
+t/16client-lists.t
+t/17client-encodings.t
+t/19client-nick.t
+t/99pod.t
