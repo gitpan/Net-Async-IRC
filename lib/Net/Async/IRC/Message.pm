@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2008,2009 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2008-2010 -- leonerd@leonerd.org.uk
 
 package Net::Async::IRC::Message;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use Carp;
 our @CARP_NOT = qw( Net::Async::IRC );
@@ -275,12 +275,29 @@ my %ARG_NAMES = (
 
    301 => { target_name => 1,
             text        => 2 }, # AWAY
+   311 => { target_name => 1,
+            ident       => 2,
+            host        => 3,
+            flags       => 4,
+            realname    => 5 }, # WHOISUSER
+   314 => { target_name => 1,
+            ident       => 2,
+            host        => 3,
+            flags       => 4,
+            realname    => 5 }, # WHOWASUSER
+   317 => { target_name => 1,
+            idle_time   => 2 }, # WHOISIDLE
+   319 => { target_name => 1,
+            channels    => '2@' }, # WHOISCHANNELS
 
    324 => { target_name => 1,
             modechars   => 2,
             modeargs    => "3.." }, # CHANNELMODEIS
    329 => { target_name => 1,
             timestamp   => 2 },    # CHANNELCREATED - extension not in 2812
+   330 => { target_name => 1,
+            whois_nick  => 2,
+            login_name  => 3, },   # LOGGEDINAS - extension not in 2812
    331 => { target_name => 1 },    # NOTOPIC
    332 => { target_name => 1,
             text        => 2 },    # TOPIC
@@ -298,7 +315,7 @@ my %ARG_NAMES = (
           }, # WHOREPLY
 
    353 => { target_name => 2,
-            names       => 3 }, # NAMEREPLY
+            names       => '3@' }, # NAMEREPLY
    367 => { target_name => 1,
             mask        => 2,
             by_nick     => 3,
@@ -317,7 +334,8 @@ $ARG_NAMES{$_} = { target_name => 0 } for qw(
 
 # Normal targeted numerics
 $ARG_NAMES{$_} = { target_name => 1 } for qw(
-   307 311 312 313 314 315 317 318 319 369 387
+   307 312 313 315 318 320 369 387
+   328
    331 341
    346 347 348 349
    366 368
@@ -375,6 +393,11 @@ they will count backwards from the end.
 
 The value is the argument at that numeric index. May be negative to count
 backwards from the end.
+
+=item * NUMBER@
+
+The value is the argument at that numeric index as for C<NUMBER>, except that
+the result will be split on spaces and stored in an ARRAY ref.
 
 =back
 
@@ -435,6 +458,9 @@ sub named_args
       }
       elsif( $argindex =~ m/^-?\d+$/ ) {
          $value = $self->arg( $argindex );
+      }
+      elsif( $argindex =~ m/^(-?\d+)\@$/ ) {
+         $value = [ split ' ', $self->arg( $1 ) ];
       }
       else {
          die "Unrecognised argument specification $argindex";

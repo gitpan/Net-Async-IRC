@@ -1,0 +1,9 @@
+Revision history for Net-Async-IRC
+
+0.02    CHANGES:
+         * Some more numerics
+         * Capture named args from more WHOIS numerics
+         * base on IO::Async::Protocol::Stream
+
+0.01    First version, released on an unsuspecting world.
+

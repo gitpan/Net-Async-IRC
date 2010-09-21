@@ -1,16 +1,16 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2008,2009 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2008-2010 -- leonerd@leonerd.org.uk
 
 package Net::Async::IRC;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
-use base qw( IO::Async::Stream );
+use base qw( IO::Async::Protocol::Stream );
 
 use Carp;
 
@@ -91,6 +91,7 @@ sub new
 sub _init
 {
    my $self = shift;
+   $self->SUPER::_init( @_ );
 
    my $pingtime = 60;
    my $pongtime = 10;
@@ -110,8 +111,6 @@ sub _init
    );
    $self->add_child( $self->{pingtimer} );
 
-   $self->{pingtimer}->start if defined $self->read_handle;
-
    $self->{pongtimer} = IO::Async::Timer::Countdown->new(
       delay => $pongtime,
 
@@ -128,6 +127,8 @@ sub _init
    $self->{channame_re} = qr/^[#&]/;
    $self->{prefixflag_re} = qr/^[\@+]/;
    $self->{isupport}->{CHANMODES_LIST} = [qw( b k l imnpst )]; # TODO: ov
+
+   $self->{state} = STATE_UNCONNECTED;
 }
 
 =head1 PARAMETERS
@@ -239,15 +240,25 @@ sub configure
    }
 
    $self->SUPER::configure( %args );
+}
 
-   if( defined $self->read_handle ) {
-      $self->{state} = STATE_CONNECTED;
-      $self->{pingtimer}->start if $self->{pingtimer} and $self->get_loop;
-   }
-   else {
-      $self->{state} = STATE_UNCONNECTED;
-      $self->{pingtimer}->stop if $self->{pingtimer} and $self->get_loop;
-   }
+sub setup_transport
+{
+   my $self = shift;
+   $self->SUPER::setup_transport( @_ );
+
+   $self->{state} = STATE_CONNECTED;
+   $self->{pingtimer}->start if $self->{pingtimer} and $self->get_loop;
+}
+
+sub teardown_transport
+{
+   my $self = shift;
+
+   $self->{state} = STATE_UNCONNECTED;
+   $self->{pingtimer}->stop if $self->{pingtimer} and $self->get_loop;
+
+   $self->SUPER::teardown_transport( @_ );
 }
 
 =head1 METHODS
@@ -351,7 +362,10 @@ sub connect
       on_connected => sub {
          my ( $sock ) = @_;
 
-         $self->set_handle( $sock );
+         $self->configure(
+            # TODO: This might not be a plain ::Stream
+            transport => IO::Async::Stream->new( handle => $sock ),
+         );
 
          $on_connected->( $self );
       },
@@ -1474,8 +1488,7 @@ sub on_message_353 # RPL_NAMES
    my $self = shift;
    my ( $message, $hints ) = @_;
 
-   my @names = split( m/ /, $hints->{names} );
-   $self->build_list( "names", $hints->{target_name_folded}, $_ ) foreach @names;
+   $self->build_list( "names", $hints->{target_name_folded}, $_ ) foreach @{ $hints->{names} };
 
    return 1;
 }

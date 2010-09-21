@@ -23,7 +23,7 @@ my $lag;
 my $pingout;
 
 my $irc = Net::Async::IRC->new(
-   handle => $S1,
+   transport => IO::Async::Stream->new( handle => $S1 ),
    on_message => sub { "IGNORE" },
 
    nick => "DefaultNick",

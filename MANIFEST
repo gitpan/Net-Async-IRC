@@ -1,4 +1,5 @@
 Build.PL
+Changes
 lib/Net/Async/IRC.pm
 lib/Net/Async/IRC/Message.pm
 LICENSE
