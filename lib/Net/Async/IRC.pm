@@ -8,7 +8,7 @@ package Net::Async::IRC;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use base qw( IO::Async::Protocol::Stream );
 
@@ -32,7 +32,7 @@ my $CRLF = "\x0d\x0a"; # More portable than \r\n
 
 =head1 NAME
 
-C<Net::Async::IRC> - Asynchronous IRC client
+C<Net::Async::IRC> - Use IRC with C<IO::Async>
 
 =head1 SYNOPSIS
 
@@ -359,13 +359,10 @@ sub connect
    $loop->connect(
       %args,
 
-      on_connected => sub {
-         my ( $sock ) = @_;
+      on_stream => sub {
+         my ( $stream ) = @_;
 
-         $self->configure(
-            # TODO: This might not be a plain ::Stream
-            transport => IO::Async::Stream->new( handle => $sock ),
-         );
+         $self->configure( transport => $stream );
 
          $on_connected->( $self );
       },

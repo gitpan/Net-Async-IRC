@@ -1,5 +1,9 @@
 Revision history for Net-Async-IRC
 
+0.03    BUGFIXES:
+         * Fix failures due to IO::Async::Test or ::Loop no longer loading
+           IO::Async::Stream; load it explicitly where needed
+
 0.02    CHANGES:
          * Some more numerics
          * Capture named args from more WHOIS numerics

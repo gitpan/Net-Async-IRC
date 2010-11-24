@@ -1,5 +1,5 @@
 NAME
-    "Net::Async::IRC" - Asynchronous IRC client
+    "Net::Async::IRC" - Use IRC with "IO::Async"
 
 SYNOPSIS
      TODO

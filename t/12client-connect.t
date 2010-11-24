@@ -4,6 +4,7 @@ use strict;
 
 use IO::Async::Test;
 use IO::Async::Loop;
+use IO::Async::Stream; # placate IO::Async bug - shouldn't be necessary
 
 use Test::More tests => 10;
 
