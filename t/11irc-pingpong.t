@@ -10,7 +10,7 @@ use IO::Async::Test;
 use IO::Async::Loop;
 use IO::Async::Stream;
 
-use Net::Async::IRC;
+use Net::Async::IRC::Protocol;
 
 my $CRLF = "\x0d\x0a"; # because \r\n isn't portable
 
@@ -22,11 +22,9 @@ my ( $S1, $S2 ) = $loop->socketpair() or die "Cannot create socket pair - $!";
 my $lag;
 my $pingout;
 
-my $irc = Net::Async::IRC->new(
+my $irc = Net::Async::IRC::Protocol->new(
    transport => IO::Async::Stream->new( handle => $S1 ),
    on_message => sub { "IGNORE" },
-
-   nick => "DefaultNick",
 
    pingtime => 2,
    pongtime => 1,

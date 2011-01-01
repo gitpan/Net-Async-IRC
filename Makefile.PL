@@ -6,7 +6,7 @@ WriteMakefile
           'VERSION_FROM' => 'lib/Net/Async/IRC.pm',
           'PREREQ_PM' => {
                            'IO::Async' => '0.30',
-                           'IO::Async::Protocol::Stream' => 0,
+                           'IO::Async::Protocol::LineStream' => '0.34',
                            'IO::Async::Test' => '0.14',
                            'Test::Exception' => 0,
                            'Test::More' => 0,

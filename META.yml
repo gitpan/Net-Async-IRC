@@ -18,13 +18,16 @@ name: Net-Async-IRC
 provides:
   Net::Async::IRC:
     file: lib/Net/Async/IRC.pm
-    version: 0.03
+    version: 0.04
   Net::Async::IRC::Message:
     file: lib/Net/Async/IRC/Message.pm
-    version: 0.03
+    version: 0.04
+  Net::Async::IRC::Protocol:
+    file: lib/Net/Async/IRC/Protocol.pm
+    version: 0.04
 requires:
-  IO::Async::Protocol::Stream: 0
+  IO::Async::Protocol::LineStream: 0.34
   Time::HiRes: 0
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.03
+version: 0.04

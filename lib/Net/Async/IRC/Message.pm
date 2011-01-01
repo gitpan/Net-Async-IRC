@@ -8,7 +8,7 @@ package Net::Async::IRC::Message;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use Carp;
 our @CARP_NOT = qw( Net::Async::IRC );
@@ -19,7 +19,17 @@ C<Net::Async::IRC::Message> - encapsulates a single IRC message
 
 =head1 SYNOPSIS
 
- TODO
+ use Net::Async::IRC::Message;
+
+ my $hello = Net::Async::IRC::Message->new(
+    "PRIVMSG",
+    undef,
+    "World",
+    "Hello, world!"
+ );
+
+ printf "The command is %s and the final argument is %s\n",
+    $hello->command, $hello->arg( -1 );
 
 =head1 DESCRIPTION
 

@@ -6,7 +6,7 @@ use Module::Build;
 my $build = Module::Build->new(
    module_name => 'Net::Async::IRC',
    requires => {
-      'IO::Async::Protocol::Stream' => 0,
+      'IO::Async::Protocol::LineStream' => '0.34',
       'Time::HiRes' => 0,
    },
    build_requires => {
