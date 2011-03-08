@@ -1,5 +1,5 @@
 NAME
-    "Net::Async::IRC" - Use IRC with "IO::Async"
+    "Net::Async::IRC" - use IRC with "IO::Async"
 
 SYNOPSIS
      use IO::Async::Loop;

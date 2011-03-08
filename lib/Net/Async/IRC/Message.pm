@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2008-2010 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2008-2011 -- leonerd@leonerd.org.uk
 
 package Net::Async::IRC::Message;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 use Carp;
 our @CARP_NOT = qw( Net::Async::IRC );
@@ -275,66 +275,6 @@ my %ARG_NAMES = (
                 text    => 1 },
    TOPIC   => { target_name => 0,
                 text        => 1 },
-
-   '004' => { serverhost    => 1,
-              serverversion => 2,
-              usermodes     => 3,
-              channelmodes  => 4 }, # MYINFO
-   '005' => { isupport => "1..-2",
-              text     => -1 },     # ISUPPORT
-
-   301 => { target_name => 1,
-            text        => 2 }, # AWAY
-   311 => { target_name => 1,
-            ident       => 2,
-            host        => 3,
-            flags       => 4,
-            realname    => 5 }, # WHOISUSER
-   314 => { target_name => 1,
-            ident       => 2,
-            host        => 3,
-            flags       => 4,
-            realname    => 5 }, # WHOWASUSER
-   317 => { target_name => 1,
-            idle_time   => 2 }, # WHOISIDLE
-   319 => { target_name => 1,
-            channels    => '2@' }, # WHOISCHANNELS
-
-   324 => { target_name => 1,
-            modechars   => 2,
-            modeargs    => "3.." }, # CHANNELMODEIS
-   329 => { target_name => 1,
-            timestamp   => 2 },    # CHANNELCREATED - extension not in 2812
-   330 => { target_name => 1,
-            whois_nick  => 2,
-            login_name  => 3, },   # LOGGEDINAS - extension not in 2812
-   331 => { target_name => 1 },    # NOTOPIC
-   332 => { target_name => 1,
-            text        => 2 },    # TOPIC
-   333 => { target_name => 1,
-            topic_nick  => 2,
-            timestamp   => 3, },   # TOPICSETBY - extension not in 2812
-
-   352 => { target_name => 1,
-            user_ident  => 2,
-            user_host   => 3,
-            user_server => 4,
-            user_nick   => 5,
-            user_flags  => 6,
-            text        => 7, # really "hopcount realname" but can't parse text yet
-          }, # WHOREPLY
-
-   353 => { target_name => 2,
-            names       => '3@' }, # NAMEREPLY
-   367 => { target_name => 1,
-            mask        => 2,
-            by_nick     => 3,
-            timestamp   => 4 }, # BANLIST
-
-   441 => { user_nick   => 1,
-            target_name => 2 }, # ERR_USERNOTINCHANNEL
-   443 => { user_nick   => 1,
-            target_name => 2 }, # ERR_USERONCHANNEL
 );
 
 # Misc. named commands
@@ -342,32 +282,25 @@ $ARG_NAMES{$_} = { target_name => 0 } for qw(
    JOIN LIST NAMES WHO WHOIS WHOWAS
 );
 
-# Normal targeted numerics
-$ARG_NAMES{$_} = { target_name => 1 } for qw(
-   307 312 313 315 318 320 369 387
-   328
-   331 341
-   346 347 348 349
-   366 368
-   401 402 403 404 405 406 408
-   432 433 436 437
-   442 444
-   467 471 473 474 475 476 477 478
-   482
-);
+while( <DATA> ) {
+   chomp;
+   my ( $numname, $args ) = split m/\s*\|\s*/, $_ or next;
+   my ( $num, $name ) = split m/=/, $numname;
 
-# Untargeted numerics with nothing of interest
-$ARG_NAMES{$_} = { } for qw(
-   376
-);
+   my $index = 0;
+   my %args = map {
+      if( m/^(.*)=(.*)$/ ) {
+         $index = $1;
+         ( $2 => $1 )
+      }
+      else {
+         ( $_ => ++$index );
+      }
+   } split m/,/, $args;
 
-# Untargeted numerics with a simple text message
-$ARG_NAMES{$_} = { text => 1 } for qw(
-   001 002 003
-   305 306
-   372 375
-);
-
+   # TODO: Use the name somehow
+   $ARG_NAMES{$num} = \%args;
+}
 
 # TODO: 472 ERR_UNKNOWNMODE: <char> :is unknown mode char to me for <channel>
 # How to parse this one??
@@ -482,11 +415,105 @@ sub named_args
    return \%named_args;
 }
 
-# Keep perl happy; keep Britain tidy
-1;
-
-__END__
-
 =head1 AUTHOR
 
 Paul Evans <leonerd@leonerd.org.uk>
+
+=cut
+
+0x55AA;
+
+# And now the actual numeric definitions, given in columns
+# number=NAME | argname,argname,argname
+
+# arg may be position=argname
+
+# See also
+#   http://www.alien.net.au/irc/irc2numerics.html
+
+__DATA__
+001=RPL_WELCOME         | text
+002=RPL_YOURHOST        | text
+003=RPL_CREATED         | text
+004=RPL_MYINFO          | serverhost,serverversion,usermodes,channelmodes
+005=RPL_ISUPPORT        | 1..-2=isupport,-1=text
+
+250=RPL_STATSCONN       | text
+251=RPL_LUSERCLIENT     | text
+252=RPL_LUSEROP         | count,text
+253=RPL_LUSERUNKNOWN    | count,text
+254=RPL_LUSERCHANNELS   | count,text
+255=RPL_LUSERME         | text
+265=RPL_LOCALUSERS      | count,max_count,text
+266=RPL_GLOBALUSERS     | count,max_count,text
+
+301=RPL_AWAY            | target_name,text
+305=RPL_UNAWAY          | text
+306=RPL_NOWAWAY         | text
+
+307=RPL_USERIP          | target_name
+311=RPL_WHOISUSER       | target_name,ident,host,flags,realname
+312=RPL_WHOISSERVER     | target_name,server,serverinfo
+313=RPL_WHOISOPERATOR   | target_name,text
+315=RPL_ENDOFWHO        | target_name
+314=RPL_WHOWASUSER      | target_name,ident,host,flags,realname
+317=RPL_WHOISIDLE       | target_name,idle_time
+318=RPL_ENDOFWHOIS      | target_name
+319=RPL_WHOISCHANNELS   | target_name,2@=channels
+320=RPL_WHOISSPECIAL    | target_name
+324=RPL_CHANNELMODEIS   | target_name,modechars,3..=modeargs
+328=RPL_CHANNEL_URL     | target_name,text
+329=RPL_CHANNELCREATED  | target_name,timestamp
+330=RPL_WHOISACCOUNT    | target_name,whois_nick,login_name
+
+331=RPL_NOTOPIC         | target_name
+332=RPL_TOPIC           | target_name,text
+333=RPL_TOPICWHOTIME    | target_name,topic_nick,timestamp
+
+341=RPL_INVITING        | target_name,channel_name
+346=RPL_INVITELIST      | target_name,invite_mask
+347=RPL_ENDOFINVITELIST | target_name
+348=RPL_EXCEPTLIST      | target_name,except_mask
+349=RPL_ENDOFEXCEPTLIST | target_name
+
+352=RPL_WHOREPLY        | target_name,user_ident,user_host,user_server,user_nick,user_flags,text
+353=RPL_NAMEREPLY       | 2=target_name,3@=names
+
+366=RPL_ENDOFNAMES      | target_name
+367=RPL_BANLIST         | target_name,mask,by_nick,timestamp
+368=RPL_ENDOFBANLIST    | target_name
+369=RPL_ENDOFWHOWAS     | target_name
+
+372=RPL_MOTD            | text
+375=RPL_MOTDSTART       | text
+376=RPL_ENDOFMOTD       |
+378=RPL_WHOISHOST       | target_name,text
+
+401=ERR_NOSUCHNICK              | target_name,text
+402=ERR_NOSUCHSERVER            | server_name,text
+403=ERR_NOSUCHCHANNEL           | target_name,text
+404=ERR_CANNOTSENDTOCHAN        | target_name,text
+405=ERR_TOOMANYCHANNELS         | target_name,text
+406=ERR_WASNOSUCHNICK           | target_name,text
+408=ERR_NOSUCHSERVICE           | target_name,text
+
+432=ERR_ERRONEUSNICKNAME        | nick,text
+433=ERR_NICKNAMEINUSE           | nick,text
+436=ERR_NICKCOLLISION           | nick,text
+
+441=ERR_USERNOTINCHANNEL        | user_nick,target_name,text
+442=ERR_NOTONCHANNEL            | target_name,text
+443=ERR_USERONCHANNEL           | user_nick,target_name,text
+444=ERR_NOLOGIN                 | target_name,text
+
+467=ERR_KEYSET                  | target_name,text
+
+471=ERR_CHANNELISFULL           | target_name,text
+473=ERR_INVITEONLYCHAN          | target_name,text
+474=ERR_BANNEDFROMCHAN          | target_name,text
+475=ERR_BADCHANNELKEY           | target_name,text
+476=ERR_BADCHANMASK             | target_name,text
+477=ERR_NEEDREGGEDNICK          | target_name,text
+478=ERR_BANLISTFULL             | target_name,text
+
+482=ERR_CHANOPRIVSNEEDED        | target_name,text

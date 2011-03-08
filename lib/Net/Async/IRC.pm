@@ -8,7 +8,7 @@ package Net::Async::IRC;
 use strict;
 use warnings;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 use base qw( Net::Async::IRC::Protocol );
 
@@ -18,7 +18,7 @@ use Socket qw( SOCK_STREAM );
 
 =head1 NAME
 
-C<Net::Async::IRC> - Use IRC with C<IO::Async>
+C<Net::Async::IRC> - use IRC with C<IO::Async>
 
 =head1 SYNOPSIS
 
@@ -171,9 +171,9 @@ sub connect
 
    my $on_error = delete $args{on_error};
 
-   $self->SUPER::connect(
-      service => "6667",
+   $args{service} ||= "6667";
 
+   $self->SUPER::connect(
       %args,
 
       on_resolve_error => sub {
@@ -751,11 +751,6 @@ sub on_message_376 # RPL_ENDOFMOTD
    $self->pull_list_and_invoke( "motd", $message, $hints );
 }
 
-# Keep perl happy; keep Britain tidy
-1;
-
-__END__
-
 =head1 SEE ALSO
 
 =over 4
@@ -769,3 +764,7 @@ L<http://tools.ietf.org/html/rfc2812> - Internet Relay Chat: Client Protocol
 =head1 AUTHOR
 
 Paul Evans <leonerd@leonerd.org.uk>
+
+=cut
+
+0x55AA;

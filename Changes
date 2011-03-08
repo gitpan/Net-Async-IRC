@@ -1,5 +1,10 @@
 Revision history for Net-Async-IRC
 
+0.05    CHANGES:
+         * Bugfix for ->connect() with service => undef
+         * Some more numerics
+         * New model for storing numerics in source code
+
 0.04    CHANGES:
          * Split lower-level code into new Net::Async::IRC::Protocol module
          * Use IO::Async::Protocol->connect from 0.34
