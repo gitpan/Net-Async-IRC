@@ -4,6 +4,7 @@ examples/SYNOPSIS.pl
 lib/Net/Async/IRC.pm
 lib/Net/Async/IRC/Message.pm
 lib/Net/Async/IRC/Protocol.pm
+lib/Protocol/IRC/Message.pm
 LICENSE
 Makefile.PL
 MANIFEST			This list of files
@@ -24,3 +25,4 @@ t/21client-chanmodes.t
 t/22client-lists.t
 t/23client-nick.t
 t/99pod.t
+META.json

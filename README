@@ -1,5 +1,5 @@
 NAME
-    "Net::Async::IRC" - use IRC with "IO::Async"
+    `Net::Async::IRC' - use IRC with `IO::Async'
 
 SYNOPSIS
      use IO::Async::Loop;
@@ -39,28 +39,28 @@ DESCRIPTION
     at some near point in the future.
 
 PARAMETERS
-    The following named parameters may be passed to "new" or "configure":
+    The following named parameters may be passed to `new' or `configure':
 
     nick => STRING
     user => STRING
     realname => STRING
-            Connection details. See also "connect", "login".
+            Connection details. See also `connect', `login'.
 
-            If "user" is not supplied, it will default to either
-            $ENV{LOGNAME} or the current user's name as supplied by
-            "getpwuid()".
+            If `user' is not supplied, it will default to either
+            `$ENV{LOGNAME}' or the current user's name as supplied by
+            `getpwuid()'.
 
             If unconnected, changing these properties will set the default
             values to use when logging in.
 
-            If logged in, changing the "nick" property is equivalent to
-            calling "change_nick". Changing the other properties will not
+            If logged in, changing the `nick' property is equivalent to
+            calling `change_nick'. Changing the other properties will not
             take effect until the next login.
 
 METHODS
   $irc->connect( %args )
     Connects to the IRC server. This method does not perform the complete
-    IRC login sequence; for that see instead the "login" method.
+    IRC login sequence; for that see instead the `login' method.
 
     host => STRING
             Hostname of the IRC server.
@@ -71,7 +71,7 @@ METHODS
 
     on_connected => CODE
             Continuation to invoke once the connection has been established.
-            Usually used by the "login" method to perform the actual login
+            Usually used by the `login' method to perform the actual login
             sequence.
 
              $on_connected->( $irc )
@@ -82,18 +82,18 @@ METHODS
 
              $on_error->( $errormsg )
 
-    Any other arguments are passed into the underlying "IO::Async::Loop"
-    "connect" method.
+    Any other arguments are passed into the underlying `IO::Async::Loop'
+    `connect' method.
 
   $irc->login( %args )
-    Logs in to the IRC network, connecting first using the "connect" method
+    Logs in to the IRC network, connecting first using the `connect' method
     if required. Takes the following named arguments:
 
     nick => STRING
     user => STRING
     realname => STRING
-            IRC connection details. Defaults can be set with the "new" or
-            "configure" methods.
+            IRC connection details. Defaults can be set with the `new' or
+            `configure' methods.
 
     pass => STRING
             Server password to connect with.
@@ -103,25 +103,22 @@ METHODS
 
              $on_login->( $irc )
 
-    Any other arguments that are passed, are forwarded to the "connect"
-    method if it is required; i.e. if "login" is invoked when not yet
+    Any other arguments that are passed, are forwarded to the `connect'
+    method if it is required; i.e. if `login' is invoked when not yet
     connected to the server.
 
   $info = $irc->server_info( $key )
-    Returns an item of information from the server's 004 line. $key should
-    one of
+    Returns an item of information from the server's `004' line. `$key'
+    should one of
 
-    *       host
-
-    *       version
-
-    *       usermodes
-
-    *       channelmodes
+    * host
+    * version
+    * usermodes
+    * channelmodes
 
   $irc->change_nick( $newnick )
     Requests to change the nick. If unconnected, the change happens
-    immediately to the stored defaults. If logged in, sends a "NICK" command
+    immediately to the stored defaults. If logged in, sends a `NICK' command
     to the server, which may suceed or fail at a later point.
 
 PER-MESSAGE SPECIFICS
@@ -131,10 +128,10 @@ PER-MESSAGE SPECIFICS
     message handler stages. These details are noted here.
 
     Many of these messages create new events; called synthesized messages.
-    These are messages created by the "Net::Async::IRC" object itself, to
+    These are messages created by the `Net::Async::IRC' object itself, to
     better represent some of the details derived from the primary ones from
     the server. These events all take lower-case command names, rather than
-    capitals, and will have a "synthesized" key in the hints hash, set to a
+    capitals, and will have a `synthesized' key in the hints hash, set to a
     true value. These are dispatched and handled identically to regular
     primary events, detailed above.
 
@@ -144,7 +141,7 @@ PER-MESSAGE SPECIFICS
   MODE (on channels) and 324 (RPL_CHANNELMODEIS)
     These message involve channel modes. The raw list of channel modes is
     parsed into an array containing one entry per affected piece of data.
-    Each entry will contain at least a "type" key, indicating what sort of
+    Each entry will contain at least a `type' key, indicating what sort of
     mode or mode change it is:
 
     list    The mode relates to a list; bans, invites, etc..
@@ -156,24 +153,24 @@ PER-MESSAGE SPECIFICS
     occupant
             The mode relates to a user in the channel
 
-    Every mode type then provides a "mode" key, containing the mode
-    character itself, and a "sense" key which is an empty string, "+", or
-    "-".
+    Every mode type then provides a `mode' key, containing the mode
+    character itself, and a `sense' key which is an empty string, `+', or
+    `-'.
 
-    For "list" and "value" types, the "value" key gives the actual list
+    For `list' and `value' types, the `value' key gives the actual list
     entry or value being set.
 
-    For "occupant" types, a "flag" key gives the mode converted into an
-    occupant flag (by the "prefix_mode2flag" method), "nick" and
-    "nick_folded" store the user name affected.
+    For `occupant' types, a `flag' key gives the mode converted into an
+    occupant flag (by the `prefix_mode2flag' method), `nick' and
+    `nick_folded' store the user name affected.
 
-    "boolean" types do not create any extra keys.
+    `boolean' types do not create any extra keys.
 
   352 (RPL_WHOREPLY) and 315 (RPL_ENDOFWHO)
     These messages will be collected up, per channel, and formed into a
-    single synthesized event called "who".
+    single synthesized event called `who'.
 
-    Its hints hash will contain an extra key, "who", which will be an ARRAY
+    Its hints hash will contain an extra key, `who', which will be an ARRAY
     ref containing the lines of the WHO reply. Each line will be a HASH
     reference containing:
 
@@ -186,9 +183,9 @@ PER-MESSAGE SPECIFICS
 
   353 (RPL_NAMES) and 366 (RPL_ENDOFNAMES)
     These messages will be collected up, per channel, and formed into a
-    single synthesized event called "names".
+    single synthesized event called `names'.
 
-    Its hints hash will contain an extra key, "names", which will be an
+    Its hints hash will contain an extra key, `names', which will be an
     ARRAY ref containing the usernames in the channel. Each will be a HASH
     reference containing:
 
@@ -197,9 +194,9 @@ PER-MESSAGE SPECIFICS
 
   367 (RPL_BANLIST) and 368 (RPL_ENDOFBANS)
     These messages will be collected up, per channel, and formed into a
-    single synthesized event called "bans".
+    single synthesized event called `bans'.
 
-    Its hints hash will contain an extra key, "bans", which will be an ARRAY
+    Its hints hash will contain an extra key, `bans', which will be an ARRAY
     ref containing the ban lines. Each line will be a HASH reference
     containing:
 
@@ -214,13 +211,13 @@ PER-MESSAGE SPECIFICS
 
   372 (RPL_MOTD), 375 (RPL_MOTDSTART) and 376 (RPL_ENDOFMOTD)
     These messages will be collected up into a synthesized event called
-    "motd".
+    `motd'.
 
-    Its hints hash will contain an extra key, "motd", which will be an ARRAY
+    Its hints hash will contain an extra key, `motd', which will be an ARRAY
     ref containing the lines of the MOTD.
 
 SEE ALSO
-    *   <http://tools.ietf.org/html/rfc2812> - Internet Relay Chat: Client
+    *   http://tools.ietf.org/html/rfc2812 - Internet Relay Chat: Client
         Protocol
 
 AUTHOR

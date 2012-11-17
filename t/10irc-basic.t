@@ -52,7 +52,7 @@ my ( $command, $msg, $hints ) = @$m;
 
 is( $command, "001", '$command' );
 
-isa_ok( $msg, "Net::Async::IRC::Message", '$msg isa Net::Async::IRC::Message' );
+isa_ok( $msg, "Protocol::IRC::Message", '$msg isa Protocol::IRC::Message' );
 
 is( $msg->command, "001",             '$msg->command' );
 is( $msg->prefix,  "irc.example.com", '$msg->prefix' );

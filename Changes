@@ -1,5 +1,10 @@
 Revision history for Net-Async-IRC
 
+0.06    CHANGES:
+         * Renamed Net::Async::IRC::Message to Protocol::IRC::Message, as the
+           first step of the split to Protocol::IRC
+         * Implement IRCv3 message tags
+
 0.05    CHANGES:
          * Bugfix for ->connect() with service => undef
          * Some more numerics

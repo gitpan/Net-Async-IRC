@@ -2,10 +2,10 @@
 
 use strict;
 
-use Test::More tests => 42;
-use Test::Exception;
+use Test::More tests => 50;
+use Test::Fatal;
 
-use Net::Async::IRC::Message;
+use Protocol::IRC::Message;
 
 sub test_line
 {
@@ -13,7 +13,7 @@ sub test_line
    my $line = shift;
    my %asserts = @_;
 
-   my $msg = Net::Async::IRC::Message->new_from_line( $line );
+   my $msg = Protocol::IRC::Message->new_from_line( $line );
 
    exists $asserts{command} and
       is( $msg->command, $asserts{command}, "$testname command" );
@@ -26,12 +26,15 @@ sub test_line
 
    exists $asserts{stream} and
       is( $msg->stream_to_line, $asserts{stream}, "$testname restream" );
+
+   exists $asserts{tags} and
+      is_deeply( $msg->tags, $asserts{tags}, "$testname tags" );
 }
 
-my $msg = Net::Async::IRC::Message->new( "command", "prefix", "arg1", "arg2" );
+my $msg = Protocol::IRC::Message->new( "command", "prefix", "arg1", "arg2" );
 
 ok( defined $msg, 'defined $msg' );
-isa_ok( $msg, "Net::Async::IRC::Message", '$msg isa Net::Async::IRC::Message' );
+isa_ok( $msg, "Protocol::IRC::Message", '$msg isa Protocol::IRC::Message' );
 
 is( $msg->command, "COMMAND", '$msg->command' );
 is( $msg->prefix,  "prefix",  '$msg->prefix' );
@@ -40,6 +43,12 @@ is( $msg->arg(1),  "arg2",    '$msg->arg(1)' );
 is_deeply( [ $msg->args ], [qw( arg1 arg2 )], '$msg->args' );
 
 is( $msg->stream_to_line, ":prefix COMMAND arg1 arg2", '$msg->stream_to_line' );
+
+$msg = Protocol::IRC::Message->new( "PRIVMSG", undef, "#example", "throws a rock" );
+$msg->add_tag( intent => "ACTION" );
+is_deeply( $msg->tags, { intent => "ACTION" }, '$msg->tags' );
+
+is( $msg->stream_to_line, "\@intent=ACTION PRIVMSG #example :throws a rock" );
 
 test_line "Basic",
    "COMMAND",
@@ -90,26 +99,47 @@ test_line "With :final",
    args    => [ ":final" ],
    stream  => "MESSAGE ::final";
 
-throws_ok( sub { Net::Async::IRC::Message->new( "some command" ) },
-           qr/^Command must be just letters or three digits/,
-           'Command with spaces fails' );
+test_line "With \@tags",
+   "\@intent=ACTION;znc.in/extension=value;foo PRIVMSG #example :throws a rock",
+   command => "PRIVMSG",
+   prefix  => "",
+   args    => [ "#example", "throws a rock" ],
+   tags    => {
+      intent             => "ACTION",
+      'znc.in/extension' => "value",
+      foo                => undef,
+   };
 
-throws_ok( sub { Net::Async::IRC::Message->new( "cmd", "prefix with spaces" ) },
-           qr/^Prefix must not contain whitespace/,
-           'Command with spaces fails' );
+like( exception { Protocol::IRC::Message->new( "some command" ) },
+      qr/^Command must be just letters or three digits/,
+      'Command with spaces fails' );
 
-throws_ok( sub { Net::Async::IRC::Message->new( "cmd", undef, "foo\x0d\x{0d}bar" ) },
-           qr/^Final argument must not contain a linefeed/,
-           'Final with linefeed fails' );
+like( exception { Protocol::IRC::Message->new( "cmd", "prefix with spaces" ) },
+     qr/^Prefix must not contain whitespace/,
+     'Command with spaces fails' );
 
-throws_ok( sub { Net::Async::IRC::Message->new( "cmd", undef, undef ) },
-           qr/^Final argument must be defined/,
-           'Final undef fails' );
+like( exception { Protocol::IRC::Message->new( "cmd", undef, "foo\x0d\x{0d}bar" ) },
+     qr/^Final argument must not contain a linefeed/,
+     'Final with linefeed fails' );
 
-throws_ok( sub { Net::Async::IRC::Message->new( "cmd", undef, "foo bar", "splot wibble" ) },
-           qr/^Argument must not contain whitespace/,
-           'Argument with whitespace fails' );
+like( exception { Protocol::IRC::Message->new( "cmd", undef, undef ) },
+     qr/^Final argument must be defined/,
+     'Final undef fails' );
 
-throws_ok( sub { Net::Async::IRC::Message->new( "cmd", undef, undef, "last" ) },
-           qr/^Argument must be defined/,
-           'Argument undef fails' );
+like( exception { Protocol::IRC::Message->new( "cmd", undef, "foo bar", "splot wibble" ) },
+     qr/^Argument must not contain whitespace/,
+     'Argument with whitespace fails' );
+
+like( exception { Protocol::IRC::Message->new( "cmd", undef, undef, "last" ) },
+     qr/^Argument must be defined/,
+     'Argument undef fails' );
+
+$msg = Protocol::IRC::Message->new( "command", undef );
+
+like( exception { $msg->add_tag('invalid_key') },
+    qr/^Tag key 'invalid_key' is invalid/,
+    'attempt to add invalid key fails');
+
+like( exception { $msg->add_tag('valid-key', 'invalid;value') },
+    qr/^Tag value 'invalid;value' for key 'valid-key' is invalid/,
+    'attempt to add key with invalid value fails');

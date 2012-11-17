@@ -3,9 +3,8 @@
 use strict;
 
 use Test::More tests => 13;
-use Test::Exception;
 
-use Net::Async::IRC::Message;
+use Protocol::IRC::Message;
 
 sub test_argnames
 {
@@ -13,7 +12,7 @@ sub test_argnames
    my $line = shift;
    my %asserts = @_;
 
-   my $msg = Net::Async::IRC::Message->new_from_line( $line );
+   my $msg = Protocol::IRC::Message->new_from_line( $line );
 
    exists $asserts{names} and
       is_deeply( $msg->arg_names, $asserts{names}, "$testname arg_names" );

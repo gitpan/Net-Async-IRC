@@ -4,7 +4,7 @@ use strict;
 
 use Test::More tests => 3;
 
-use Net::Async::IRC::Message;
+use Protocol::IRC::Message;
 
 sub test_prefix
 {
@@ -12,7 +12,7 @@ sub test_prefix
    my $line = shift;
    my ( $expect ) = @_;
 
-   my $msg = Net::Async::IRC::Message->new_from_line( $line );
+   my $msg = Protocol::IRC::Message->new_from_line( $line );
 
    is_deeply( [ $msg->prefix_split ], $expect, "prefix_split for $testname" );
 }

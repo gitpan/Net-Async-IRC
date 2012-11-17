@@ -1,0 +1,57 @@
+{
+   "abstract" : "use IRC with C<IO::Async>",
+   "author" : [
+      "Paul Evans <leonerd@leonerd.org.uk>"
+   ],
+   "dynamic_config" : 1,
+   "generated_by" : "Module::Build version 0.4001, CPAN::Meta::Converter version 2.120921",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "Net-Async-IRC",
+   "prereqs" : {
+      "build" : {
+         "requires" : {
+            "IO::Async" : "0.30",
+            "IO::Async::Test" : "0.14",
+            "Test::Fatal" : "0",
+            "Test::More" : "0"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "IO::Async::Protocol::LineStream" : "0.34",
+            "Time::HiRes" : "0"
+         }
+      }
+   },
+   "provides" : {
+      "Net::Async::IRC" : {
+         "file" : "lib/Net/Async/IRC.pm",
+         "version" : "0.06"
+      },
+      "Net::Async::IRC::Message" : {
+         "file" : "lib/Net/Async/IRC/Message.pm",
+         "version" : 0
+      },
+      "Net::Async::IRC::Protocol" : {
+         "file" : "lib/Net/Async/IRC/Protocol.pm",
+         "version" : "0.06"
+      },
+      "Protocol::IRC::Message" : {
+         "file" : "lib/Protocol/IRC/Message.pm",
+         "version" : "0.01"
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "license" : [
+         "http://dev.perl.org/licenses/"
+      ]
+   },
+   "version" : "0.06"
+}
