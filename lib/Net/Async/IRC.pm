@@ -1,16 +1,18 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2008-2011 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2008-2013 -- leonerd@leonerd.org.uk
 
 package Net::Async::IRC;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
-use base qw( Net::Async::IRC::Protocol );
+# We need to use C3 MRO to make the ->isupport etc.. methods work properly
+use mro 'c3';
+use base qw( Net::Async::IRC::Protocol Protocol::IRC::Client );
 
 use Carp;
 
@@ -65,8 +67,6 @@ sub _init
 {
    my $self = shift;
    $self->SUPER::_init( @_ );
-
-   $self->{server_info} = {};
 }
 
 =head1 PARAMETERS
@@ -167,13 +167,11 @@ sub connect
    my $self = shift;
    my %args = @_;
 
-   $self->is_connected and croak "Cannot ->connect - not in unconnected state";
-
    my $on_error = delete $args{on_error};
 
    $args{service} ||= "6667";
 
-   $self->SUPER::connect(
+   return $self->{connect_f} ||= $self->SUPER::connect(
       %args,
 
       on_resolve_error => sub {
@@ -196,7 +194,7 @@ sub connect
             $on_error->( "Cannot connect" );
          }
       },
-   );
+   )->on_fail( sub { undef $self->{connect_f} } );
 }
 
 =head2 $irc->login( %args )
@@ -250,58 +248,22 @@ sub login
    my $on_login = delete $args{on_login};
    ref $on_login eq "CODE" or croak "Expected 'on_login' as a CODE reference";
 
-   if( $self->is_connected ) {
+   return $self->{login_f} ||= $self->connect( %args )->and_then( sub {
       $self->send_message( "PASS", undef, $pass ) if defined $pass;
 
       $self->send_message( "USER", undef, $user, "0", "*", $realname );
 
       $self->send_message( "NICK", undef, $nick );
 
-      $self->{on_login} = $on_login;
-   }
-   else {
-      $self->connect(
-         %args,
+      my $f = $self->loop->new_future;
 
-         on_connected => sub {
-            $self->login(
-               nick     => $nick,
-               user     => $user,
-               realname => $realname,
-               pass     => $pass,
+      $self->{on_login} = sub {
+         $f->done;
+         goto &$on_login;
+      };
 
-               on_login => $on_login,
-            );
-         },
-      );
-   }
-}
-
-=head2 $info = $irc->server_info( $key )
-
-Returns an item of information from the server's C<004> line. C<$key> should
-one of
-
-=over 8
-
-=item * host
-
-=item * version
-
-=item * usermodes
-
-=item * channelmodes
-
-=back
-
-=cut
-
-sub server_info
-{
-   my $self = shift;
-   my ( $key ) = @_;
-
-   return $self->{server_info}{$key};
+      return $f;
+   })->on_fail( sub { undef $self->{login_f} } );
 }
 
 =head2 $irc->change_nick( $newnick )
@@ -323,145 +285,6 @@ sub change_nick
    else {
       $self->send_message( "NICK", undef, $newnick );
    }
-}
-
-=head1 PER-MESSAGE SPECIFICS
-
-Because of the wide variety of messages in IRC involving various types of data
-the message handling specific cases for certain types of message, including
-adding extra hints hash items, or invoking extra message handler stages. These
-details are noted here.
-
-Many of these messages create new events; called synthesized messages. These
-are messages created by the C<Net::Async::IRC> object itself, to better
-represent some of the details derived from the primary ones from the server.
-These events all take lower-case command names, rather than capitals, and will
-have a C<synthesized> key in the hints hash, set to a true value. These are
-dispatched and handled identically to regular primary events, detailed above.
-
-If any handler of the synthesized message returns true, then this marks the
-primary message handled as well.
-
-=cut
-
-#########################
-# Prepare hints methods #
-#########################
-
-=head2 MODE (on channels) and 324 (RPL_CHANNELMODEIS)
-
-These message involve channel modes. The raw list of channel modes is parsed
-into an array containing one entry per affected piece of data. Each entry will
-contain at least a C<type> key, indicating what sort of mode or mode change
-it is:
-
-=over 8
-
-=item list
-
-The mode relates to a list; bans, invites, etc..
-
-=item value
-
-The mode sets a value about the channel
-
-=item bool
-
-The mode is a simple boolean flag about the channel
-
-=item occupant
-
-The mode relates to a user in the channel
-
-=back
-
-Every mode type then provides a C<mode> key, containing the mode character
-itself, and a C<sense> key which is an empty string, C<+>, or C<->.
-
-For C<list> and C<value> types, the C<value> key gives the actual list entry
-or value being set.
-
-For C<occupant> types, a C<flag> key gives the mode converted into an occupant
-flag (by the C<prefix_mode2flag> method), C<nick> and C<nick_folded> store the
-user name affected.
-
-C<boolean> types do not create any extra keys.
-
-=cut
-
-sub prepare_hints_channelmode
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-
-   my ( $listmodes, $argmodes, $argsetmodes, $boolmodes ) = @{ $self->isupport( 'chanmodes_list' ) };
-
-   my $modechars = $hints->{modechars};
-   my @modeargs = @{ $hints->{modeargs} };
-
-   my @modes; # [] -> { type => $, sense => $, mode => $, arg => $ }
-
-   my $sense = 0;
-   foreach my $modechar ( split( m//, $modechars ) ) {
-      $sense =  1, next if $modechar eq "+";
-      $sense = -1, next if $modechar eq "-";
-
-      my $hasarg;
-
-      my $mode = {
-         mode  => $modechar,
-         sense => $sense,
-      };
-
-      if( index( $listmodes, $modechar ) > -1 ) {
-         $mode->{type} = 'list';
-         $mode->{value} = shift @modeargs if ( $sense != 0 );
-      }
-      elsif( index( $argmodes, $modechar ) > -1 ) {
-         $mode->{type} = 'value';
-         $mode->{value} = shift @modeargs if ( $sense != 0 );
-      }
-      elsif( index( $argsetmodes, $modechar ) > -1 ) {
-         $mode->{type} = 'value';
-         $mode->{value} = shift @modeargs if ( $sense > 0 );
-      }
-      elsif( index( $boolmodes, $modechar ) > -1 ) {
-         $mode->{type} = 'bool';
-      }
-      elsif( my $flag = $self->prefix_mode2flag( $modechar ) ) {
-         $mode->{type} = 'occupant';
-         $mode->{flag} = $flag;
-         $mode->{nick} = shift @modeargs if ( $sense != 0 );
-         $mode->{nick_folded} = $self->casefold_name( $mode->{nick} );
-      }
-      else {
-         # TODO: Err... not recognised ... what do I do?
-      }
-
-      # TODO: Consider a per-mode event here...
-
-      push @modes, $mode;
-   }
-
-   $hints->{modes} = \@modes;
-}
-
-sub prepare_hints_MODE
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-
-   if( $hints->{target_type} eq "channel" ) {
-      $self->prepare_hints_channelmode( $message, $hints );
-   }
-}
-
-sub prepare_hints_324 # RPL_CHANNELMODEIS
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-
-   $self->prepare_hints_channelmode( $message, $hints );
 }
 
 #################################
@@ -512,8 +335,8 @@ sub pull_list_and_invoke
       $list => $values,
    );
 
-   $self->_invoke( "on_message_$list", $message, \%hints ) and $hints{handled} = 1;
-   $self->_invoke( "on_message", $list, $message, \%hints ) and $hints{handled} = 1;
+   $self->invoke( "on_message_$list", $message, \%hints ) and $hints{handled} = 1;
+   $self->invoke( "on_message", $list, $message, \%hints ) and $hints{handled} = 1;
 
    return $hints{handled};
 }
@@ -535,41 +358,19 @@ sub on_message_NICK
    return 0;
 }
 
-sub on_message_001
+sub on_message_RPL_WELCOME
 {
    my $self = shift;
    my ( $message ) = @_;
 
    $self->{on_login}->( $self ) if defined $self->{on_login};
-   $self->{state}{loggedin} = 1;
    undef $self->{on_login};
 
    # Don't eat it
    return 0;
 }
 
-sub on_message_004
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-
-   @{$self->{server_info}}{qw( host version usermodes channelmodes )} =
-      @{$hints}{qw( serverhost serverversion usermodes channelmodes )};
-
-   return 0;
-}
-
-sub on_message_005
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-
-   $self->_set_isupport( { map { m/^([A-Z]+)(?:=(.*))?$/ } @{ $hints->{isupport} } } );
-
-   return 0;
-}
-
-=head2 352 (RPL_WHOREPLY) and 315 (RPL_ENDOFWHO)
+=head2 RPL_WHOREPLY and RPL_ENDOFWHO
 
 These messages will be collected up, per channel, and formed into a single
 synthesized event called C<who>.
@@ -596,14 +397,14 @@ containing:
 
 =cut
 
-sub on_message_315 # RPL_ENDOFWHO
+sub on_message_RPL_ENDOFWHO
 {
    my $self = shift;
    my ( $message, $hints ) = @_;
    $self->pull_list_and_invoke( "who", $message, $hints );
 }
 
-sub on_message_352 # RPL_WHOREPLY
+sub on_message_RPL_WHOREPLY
 {
    my $self = shift;
    my ( $message, $hints ) = @_;
@@ -613,7 +414,7 @@ sub on_message_352 # RPL_WHOREPLY
    return 1;
 }
 
-=head2 353 (RPL_NAMES) and 366 (RPL_ENDOFNAMES)
+=head2 RPL_NAMEREPLY and RPL_ENDOFNAMES
 
 These messages will be collected up, per channel, and formed into a single
 synthesized event called C<names>.
@@ -632,7 +433,7 @@ containing:
 
 =cut
 
-sub on_message_353 # RPL_NAMES
+sub on_message_RPL_NAMEREPLY
 {
    my $self = shift;
    my ( $message, $hints ) = @_;
@@ -642,7 +443,7 @@ sub on_message_353 # RPL_NAMES
    return 1;
 }
 
-sub on_message_366 # RPL_ENDOFNAMES
+sub on_message_RPL_ENDOFNAMES
 {
    my $self = shift;
    my ( $message, $hints ) = @_;
@@ -668,13 +469,13 @@ sub on_message_366 # RPL_ENDOFNAMES
       names => \%names,
    );
 
-   $self->_invoke( "on_message_names", $message, \%hints ) and $hints{handled} = 1;
-   $self->_invoke( "on_message", "names", $message, \%hints ) and $hints{handled} = 1;
+   $self->invoke( "on_message_names", $message, \%hints ) and $hints{handled} = 1;
+   $self->invoke( "on_message", "names", $message, \%hints ) and $hints{handled} = 1;
 
    return $hints{handled};
 }
 
-=head2 367 (RPL_BANLIST) and 368 (RPL_ENDOFBANS)
+=head2 RPL_BANLIST and RPL_ENDOFBANS
 
 These messages will be collected up, per channel, and formed into a single
 synthesized event called C<bans>.
@@ -702,7 +503,7 @@ UNIX timestamp the ban was created
 
 =cut
 
-sub on_message_367 # RPL_BANLIST
+sub on_message_RPL_BANLIST
 {
    my $self = shift;
    my ( $message, $hints ) = @_;
@@ -712,14 +513,14 @@ sub on_message_367 # RPL_BANLIST
    return 1;
 }
 
-sub on_message_368 # RPL_ENDOFBANS
+sub on_message_RPL_ENDOFBANS
 {
    my $self = shift;
    my ( $message, $hints ) = @_;
    $self->pull_list_and_invoke( "bans", $message, $hints );
 }
 
-=head2 372 (RPL_MOTD), 375 (RPL_MOTDSTART) and 376 (RPL_ENDOFMOTD)
+=head2 RPL_MOTD, RPL_MOTDSTART and RPL_ENDOFMOTD
 
 These messages will be collected up into a synthesized event called C<motd>.
 
@@ -728,7 +529,7 @@ containing the lines of the MOTD.
 
 =cut
 
-sub on_message_372 # RPL_MOTD
+sub on_message_RPL_MOTD
 {
    my $self = shift;
    my ( $message, $hints ) = @_;
@@ -736,7 +537,7 @@ sub on_message_372 # RPL_MOTD
    return 1;
 }
 
-sub on_message_375 # RPL_MOTDSTART
+sub on_message_RPL_MOTDSTART
 {
    my $self = shift;
    my ( $message, $hints ) = @_;
@@ -744,7 +545,7 @@ sub on_message_375 # RPL_MOTDSTART
    return 1;
 }
 
-sub on_message_376 # RPL_ENDOFMOTD
+sub on_message_RPL_ENDOFMOTD
 {
    my $self = shift;
    my ( $message, $hints ) = @_;

@@ -1,8 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
+use warnings;
 
-use Test::More tests => 13;
+use Test::More;
 
 use Protocol::IRC::Message;
 
@@ -54,3 +55,5 @@ test_argnames "324",
 test_argnames "319",
    ":server 319 YourNick Someone :#foo #bar #splot #wibble",
    args  => { target_name => 'Someone', channels => ['#foo', '#bar', '#splot', '#wibble'] };
+
+done_testing;

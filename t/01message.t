@@ -1,8 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
+use warnings;
 
-use Test::More tests => 50;
+use Test::More;
 use Test::Fatal;
 
 use Protocol::IRC::Message;
@@ -44,8 +45,11 @@ is_deeply( [ $msg->args ], [qw( arg1 arg2 )], '$msg->args' );
 
 is( $msg->stream_to_line, ":prefix COMMAND arg1 arg2", '$msg->stream_to_line' );
 
-$msg = Protocol::IRC::Message->new( "PRIVMSG", undef, "#example", "throws a rock" );
-$msg->add_tag( intent => "ACTION" );
+$msg = Protocol::IRC::Message->new( "001", undef, ":Welcome to IRC User!ident\@host" );
+is( $msg->command, "001", '$msg->command for 001' );
+is( $msg->command_name, "RPL_WELCOME", '$msg->command_name for 001' );
+
+$msg = Protocol::IRC::Message->new_with_tags( "PRIVMSG", { intent => "ACTION" }, undef, "#example", "throws a rock" );
 is_deeply( $msg->tags, { intent => "ACTION" }, '$msg->tags' );
 
 is( $msg->stream_to_line, "\@intent=ACTION PRIVMSG #example :throws a rock" );
@@ -134,12 +138,12 @@ like( exception { Protocol::IRC::Message->new( "cmd", undef, undef, "last" ) },
      qr/^Argument must be defined/,
      'Argument undef fails' );
 
-$msg = Protocol::IRC::Message->new( "command", undef );
-
-like( exception { $msg->add_tag('invalid_key') },
+like( exception { Protocol::IRC::Message->new_with_tags( "command", { 'invalid_key' => 1 }, undef ) },
     qr/^Tag key 'invalid_key' is invalid/,
     'attempt to add invalid key fails');
 
-like( exception { $msg->add_tag('valid-key', 'invalid;value') },
+like( exception { Protocol::IRC::Message->new_with_tags( "command", { 'valid-key' => 'invalid;value' }, undef ) },
     qr/^Tag value 'invalid;value' for key 'valid-key' is invalid/,
     'attempt to add key with invalid value fails');
+
+done_testing;

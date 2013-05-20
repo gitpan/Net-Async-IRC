@@ -16,23 +16,25 @@
    "prereqs" : {
       "build" : {
          "requires" : {
-            "IO::Async" : "0.30",
+            "IO::Async::OS" : "0",
             "IO::Async::Test" : "0.14",
             "Test::Fatal" : "0",
-            "Test::More" : "0"
+            "Test::More" : "0.88"
          }
       },
       "runtime" : {
          "requires" : {
+            "IO::Async::Loop" : "0.54",
             "IO::Async::Protocol::LineStream" : "0.34",
-            "Time::HiRes" : "0"
+            "Time::HiRes" : "0",
+            "perl" : "5.010"
          }
       }
    },
    "provides" : {
       "Net::Async::IRC" : {
          "file" : "lib/Net/Async/IRC.pm",
-         "version" : "0.06"
+         "version" : "0.07"
       },
       "Net::Async::IRC::Message" : {
          "file" : "lib/Net/Async/IRC/Message.pm",
@@ -40,11 +42,19 @@
       },
       "Net::Async::IRC::Protocol" : {
          "file" : "lib/Net/Async/IRC/Protocol.pm",
-         "version" : "0.06"
+         "version" : "0.07"
+      },
+      "Protocol::IRC" : {
+         "file" : "lib/Protocol/IRC.pm",
+         "version" : "0.02"
+      },
+      "Protocol::IRC::Client" : {
+         "file" : "lib/Protocol/IRC/Client.pm",
+         "version" : "0.02"
       },
       "Protocol::IRC::Message" : {
          "file" : "lib/Protocol/IRC/Message.pm",
-         "version" : "0.01"
+         "version" : "0.02"
       }
    },
    "release_status" : "stable",
@@ -53,5 +63,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "0.06"
+   "version" : "0.07"
 }

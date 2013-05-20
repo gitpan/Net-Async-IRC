@@ -1,23 +1,26 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
+use warnings;
 
-use Test::More tests => 26;
+use Test::More;
 
-use Net::Async::IRC::Protocol;
+my $irc = TestIRC->new;
 
-my $irc = Net::Async::IRC::Protocol->new;
-
-ok( defined $irc, 'defined $irc' );
-
-$irc->_set_isupport( {
+my %isupport = (
    MAXCHANNELS => "10",
    NICKLEN     => "30",
    PREFIX      => "(ohv)@%+",
+      prefix_modes => 'ohv',
+      prefix_flags => '@%+',
+      prefix_map_m2f => { 'o' => '@', 'h' => '%', 'v' => '+' },
+      prefix_map_f2m => { '@' => 'o', '%' => 'h', '+' => 'v' },
    CASEMAPPING => "rfc1459",
    CHANMODES   => "beI,k,l,imnpsta",
+      chanmodes_list => [qw( beI k l imnpsta )],
    CHANTYPES   => "#&",
-} );
+      channame_re => qr/^[#&]/,
+);
 
 is( $irc->isupport( "MAXCHANNELS" ), "10", 'ISUPPORT MAXCHANNELS is 10' );
 
@@ -51,18 +54,25 @@ is( $irc->casefold_name( "user^name" ), "user~name", 'casefold_name user^name' )
 is( $irc->classify_name( "UserName"   ), "user",    'classify_name UserName' );
 is( $irc->classify_name( "#somewhere" ), "channel", 'classify_name #somewhere' );
 
-## CHEATING
-$irc->_set_isupport( { CASEMAPPING => "strict-rfc1459" } );
-## END CHEATING
+{
+   local $isupport{CASEMAPPING} = "strict-rfc1459";
 
-is( $irc->casefold_name( "FOO[AWAY]" ), "foo{away}", 'casefold_name FOO[AWAY] under strict' );
-is( $irc->casefold_name( "user^name" ), "user^name", 'casefold_name user^name under strict' );
+   is( $irc->casefold_name( "FOO[AWAY]" ), "foo{away}", 'casefold_name FOO[AWAY] under strict' );
+   is( $irc->casefold_name( "user^name" ), "user^name", 'casefold_name user^name under strict' );
 
-## CHEATING
-$irc->_set_isupport( { CASEMAPPING => "ascii" } );
-## END CHEATING
+   local $isupport{CASEMAPPING} = "ascii";
 
-is( $irc->casefold_name( "FOO[AWAY]" ), "foo[away]", 'casefold_name FOO[AWAY] under ascii' );
+   is( $irc->casefold_name( "FOO[AWAY]" ), "foo[away]", 'casefold_name FOO[AWAY] under ascii' );
+}
 
 # Now the generated ones from CHANMODES
 is_deeply( $irc->isupport( "chanmodes_list" ), [qw( beI k l imnpsta )], 'ISUPPORT chanmodes_list is [qw( beI k l imnpsta )]' );
+
+done_testing;
+
+package TestIRC;
+use base qw( Protocol::IRC );
+
+sub new { return bless [], shift }
+
+sub isupport { return $isupport{$_[1]} }

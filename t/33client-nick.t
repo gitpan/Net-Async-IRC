@@ -1,12 +1,13 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
+use warnings;
 
+use Test::More;
 use IO::Async::Test;
+use IO::Async::OS;
 use IO::Async::Loop;
 use IO::Async::Stream;
-
-use Test::More tests => 12;
 
 use Net::Async::IRC;
 
@@ -15,7 +16,7 @@ my $CRLF = "\x0d\x0a"; # because \r\n isn't portable
 my $loop = IO::Async::Loop->new();
 testing_loop( $loop );
 
-my ( $S1, $S2 ) = $loop->socketpair() or die "Cannot create socket pair - $!";
+my ( $S1, $S2 ) = IO::Async::OS->socketpair() or die "Cannot create socket pair - $!";
 
 my $irc = Net::Async::IRC->new(
    transport => IO::Async::Stream->new( handle => $S1 ),
@@ -75,3 +76,5 @@ is( $irc->nick, "SecondNick", 'Object now confirms new nick' );
 
 ok( !$irc->is_nick_me( "FirstNick" ), 'Client no longer recognises old nick' );
 ok( $irc->is_nick_me( "SecondNick" ), 'Client now recognises new nick' );
+
+done_testing;

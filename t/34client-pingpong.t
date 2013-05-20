@@ -1,28 +1,30 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
+use warnings;
 
-use Test::More tests => 4;
+use Test::More;
 
 use Time::HiRes qw(); # Empty import, just there to let IO::Async and Net::Async::IRC use it
 
 use IO::Async::Test;
+use IO::Async::OS;
 use IO::Async::Loop;
 use IO::Async::Stream;
 
-use Net::Async::IRC::Protocol;
+use Net::Async::IRC;
 
 my $CRLF = "\x0d\x0a"; # because \r\n isn't portable
 
 my $loop = IO::Async::Loop->new();
 testing_loop( $loop );
 
-my ( $S1, $S2 ) = $loop->socketpair() or die "Cannot create socket pair - $!";
+my ( $S1, $S2 ) = IO::Async::OS->socketpair() or die "Cannot create socket pair - $!";
 
 my $lag;
 my $pingout;
 
-my $irc = Net::Async::IRC::Protocol->new(
+my $irc = Net::Async::IRC->new(
    transport => IO::Async::Stream->new( handle => $S1 ),
    on_message => sub { "IGNORE" },
 
@@ -80,3 +82,5 @@ ok( $lag >= 0 && $lag <= 1, 'client acknowledges PONG reply' );
 
 wait_for { defined $pingout };
 ok( $pingout, 'client reports PING timeout' );
+
+done_testing;

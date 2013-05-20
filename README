@@ -107,66 +107,12 @@ METHODS
     method if it is required; i.e. if `login' is invoked when not yet
     connected to the server.
 
-  $info = $irc->server_info( $key )
-    Returns an item of information from the server's `004' line. `$key'
-    should one of
-
-    * host
-    * version
-    * usermodes
-    * channelmodes
-
   $irc->change_nick( $newnick )
     Requests to change the nick. If unconnected, the change happens
     immediately to the stored defaults. If logged in, sends a `NICK' command
     to the server, which may suceed or fail at a later point.
 
-PER-MESSAGE SPECIFICS
-    Because of the wide variety of messages in IRC involving various types
-    of data the message handling specific cases for certain types of
-    message, including adding extra hints hash items, or invoking extra
-    message handler stages. These details are noted here.
-
-    Many of these messages create new events; called synthesized messages.
-    These are messages created by the `Net::Async::IRC' object itself, to
-    better represent some of the details derived from the primary ones from
-    the server. These events all take lower-case command names, rather than
-    capitals, and will have a `synthesized' key in the hints hash, set to a
-    true value. These are dispatched and handled identically to regular
-    primary events, detailed above.
-
-    If any handler of the synthesized message returns true, then this marks
-    the primary message handled as well.
-
-  MODE (on channels) and 324 (RPL_CHANNELMODEIS)
-    These message involve channel modes. The raw list of channel modes is
-    parsed into an array containing one entry per affected piece of data.
-    Each entry will contain at least a `type' key, indicating what sort of
-    mode or mode change it is:
-
-    list    The mode relates to a list; bans, invites, etc..
-
-    value   The mode sets a value about the channel
-
-    bool    The mode is a simple boolean flag about the channel
-
-    occupant
-            The mode relates to a user in the channel
-
-    Every mode type then provides a `mode' key, containing the mode
-    character itself, and a `sense' key which is an empty string, `+', or
-    `-'.
-
-    For `list' and `value' types, the `value' key gives the actual list
-    entry or value being set.
-
-    For `occupant' types, a `flag' key gives the mode converted into an
-    occupant flag (by the `prefix_mode2flag' method), `nick' and
-    `nick_folded' store the user name affected.
-
-    `boolean' types do not create any extra keys.
-
-  352 (RPL_WHOREPLY) and 315 (RPL_ENDOFWHO)
+  RPL_WHOREPLY and RPL_ENDOFWHO
     These messages will be collected up, per channel, and formed into a
     single synthesized event called `who'.
 
@@ -181,7 +127,7 @@ PER-MESSAGE SPECIFICS
     user_nick_folded
     user_flags
 
-  353 (RPL_NAMES) and 366 (RPL_ENDOFNAMES)
+  RPL_NAMEREPLY and RPL_ENDOFNAMES
     These messages will be collected up, per channel, and formed into a
     single synthesized event called `names'.
 
@@ -192,7 +138,7 @@ PER-MESSAGE SPECIFICS
     nick
     flag
 
-  367 (RPL_BANLIST) and 368 (RPL_ENDOFBANS)
+  RPL_BANLIST and RPL_ENDOFBANS
     These messages will be collected up, per channel, and formed into a
     single synthesized event called `bans'.
 
@@ -209,7 +155,7 @@ PER-MESSAGE SPECIFICS
     timestamp
             UNIX timestamp the ban was created
 
-  372 (RPL_MOTD), 375 (RPL_MOTDSTART) and 376 (RPL_ENDOFMOTD)
+  RPL_MOTD, RPL_MOTDSTART and RPL_ENDOFMOTD
     These messages will be collected up into a synthesized event called
     `motd'.
 

@@ -1,9 +1,11 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
+use warnings;
 
-use Test::More tests => 6;
+use Test::More;
 use IO::Async::Test;
+use IO::Async::OS;
 use IO::Async::Loop;
 use IO::Async::Stream;
 
@@ -14,7 +16,7 @@ my $CRLF = "\x0d\x0a"; # because \r\n isn't portable
 my $loop = IO::Async::Loop->new();
 testing_loop( $loop );
 
-my ( $S1, $S2 ) = $loop->socketpair() or die "Cannot create socket pair - $!";
+my ( $S1, $S2 ) = IO::Async::OS->socketpair() or die "Cannot create socket pair - $!";
 
 my @messages;
 
@@ -110,3 +112,5 @@ is_deeply( $hints, { prefix_nick  => undef,
                      },
                      synthesized  => 1,
                      handled      => 1 }, '$hints for names' );
+
+done_testing;

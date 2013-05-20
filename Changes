@@ -1,5 +1,12 @@
 Revision history for Net-Async-IRC
 
+0.07    CHANGES:
+         * Much splitting of non-async logic out of NaIRC into Protocol::IRC
+           tree
+         * Added name aliases for server numerics
+         * Dispatch message handler methods for numerics to names first,
+           before raw numbers
+
 0.06    CHANGES:
          * Renamed Net::Async::IRC::Message to Protocol::IRC::Message, as the
            first step of the split to Protocol::IRC

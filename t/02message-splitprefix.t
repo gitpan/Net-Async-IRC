@@ -1,8 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
+use warnings;
 
-use Test::More tests => 3;
+use Test::More;
 
 use Protocol::IRC::Message;
 
@@ -28,3 +29,5 @@ test_prefix "fully qualified host",
 test_prefix "servername",
    ':irc.example.com NOTICE YourNick :Hello',
    [ undef, undef, "irc.example.com" ];
+
+done_testing;
