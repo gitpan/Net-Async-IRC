@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2008-2013 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2008-2014 -- leonerd@leonerd.org.uk
 
 package Net::Async::IRC;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 # We need to use C3 MRO to make the ->isupport etc.. methods work properly
 use mro 'c3';
@@ -41,13 +41,10 @@ C<Net::Async::IRC> - use IRC with C<IO::Async>
 
  $irc->login(
     nick => "MyName",
-
     host => "irc.example.org",
+ )->get;
 
-    on_login => sub {
-       $irc->send_message( "PRIVMSG", undef, "YourName", "Hello world!" );
-    },
- );
+ $irc->send_message( "PRIVMSG", undef, "YourName", "Hello world!" );
 
  $loop->loop_forever;
 
@@ -93,6 +90,11 @@ If logged in, changing the C<nick> property is equivalent to calling
 C<change_nick>. Changing the other properties will not take effect until the
 next login.
 
+=item use_caps => ARRAY of STRING
+
+Attempts to negotiate IRC v3.1 CAP at connect time. The array gives the names
+of capabilities which will be requested, if the server supports them.
+
 =back
 
 =cut
@@ -102,7 +104,7 @@ sub configure
    my $self = shift;
    my %args = @_;
 
-   for (qw( user realname )) {
+   for (qw( user realname use_caps )) {
       $self->{$_} = delete $args{$_} if exists $args{$_};
    }
 
@@ -125,7 +127,7 @@ sub configure
 
 =cut
 
-=head2 $irc->connect( %args )
+=head2 $irc->connect( %args ) ==> $irc
 
 Connects to the IRC server. This method does not perform the complete IRC
 login sequence; for that see instead the C<login> method.
@@ -139,6 +141,18 @@ Hostname of the IRC server.
 =item service => STRING or NUMBER
 
 Optional. Port number or service name of the IRC server. Defaults to 6667.
+
+=back
+
+Any other arguments are passed into the underlying C<IO::Async::Loop>
+C<connect> method.
+
+=head2 $irc->connect( %args )
+
+The following additional arguments are used to provide continuations when not
+returning a Future.
+
+=over 8
 
 =item on_connected => CODE
 
@@ -156,9 +170,6 @@ taking place.
 
 =back
 
-Any other arguments are passed into the underlying C<IO::Async::Loop>
-C<connect> method.
-
 =cut
 
 # TODO: Most of this needs to be moved into an abstract Net::Async::Connection role
@@ -166,6 +177,10 @@ sub connect
 {
    my $self = shift;
    my %args = @_;
+
+   # Largely for unit testing
+   return $self->{connect_f} ||= Future->new->done( $self ) if
+      $self->read_handle;
 
    my $on_error = delete $args{on_error};
 
@@ -181,7 +196,7 @@ sub connect
          if( $args{on_resolve_error} ) {
             $args{on_resolve_error}->( $msg );
          }
-         else {
+         elsif( $on_error ) {
             $on_error->( "Cannot resolve - $msg" );
          }
       },
@@ -190,14 +205,14 @@ sub connect
          if( $args{on_connect_error} ) {
             $args{on_connect_error}->( @_ );
          }
-         else {
+         elsif( $on_error ) {
             $on_error->( "Cannot connect" );
          }
       },
    )->on_fail( sub { undef $self->{connect_f} } );
 }
 
-=head2 $irc->login( %args )
+=head2 $irc->login( %args ) ==> $irc
 
 Logs in to the IRC network, connecting first using the C<connect> method if
 required. Takes the following named arguments:
@@ -217,6 +232,19 @@ methods.
 
 Server password to connect with.
 
+=back
+
+Any other arguments that are passed, are forwarded to the C<connect> method if
+it is required; i.e. if C<login> is invoked when not yet connected to the
+server.
+
+=head2 $irc->login( %args )
+
+The following additional arguments are used to provide continuations when not
+returning a Future.
+
+=over 8
+
 =item on_login => CODE
 
 A continuation to invoke once login is successful.
@@ -224,10 +252,6 @@ A continuation to invoke once login is successful.
  $on_login->( $irc )
 
 =back
-
-Any other arguments that are passed, are forwarded to the C<connect> method if
-it is required; i.e. if C<login> is invoked when not yet connected to the
-server.
 
 =cut
 
@@ -246,20 +270,21 @@ sub login
    }
 
    my $on_login = delete $args{on_login};
-   ref $on_login eq "CODE" or croak "Expected 'on_login' as a CODE reference";
+   !defined $on_login or ref $on_login eq "CODE" or 
+      croak "Expected 'on_login' to be a CODE reference";
 
-   return $self->{login_f} ||= $self->connect( %args )->and_then( sub {
+   return $self->{login_f} ||= $self->connect( %args )->then( sub {
+      $self->send_message( "CAP", undef, "LS" ) if $self->{use_caps};
+
       $self->send_message( "PASS", undef, $pass ) if defined $pass;
-
       $self->send_message( "USER", undef, $user, "0", "*", $realname );
-
       $self->send_message( "NICK", undef, $nick );
 
       my $f = $self->loop->new_future;
 
       $self->{on_login} = sub {
          $f->done;
-         goto &$on_login;
+         goto &$on_login if $on_login;
       };
 
       return $f;
@@ -287,63 +312,110 @@ sub change_nick
    }
 }
 
-#################################
-# Methods for incremental lists #
-#################################
-
-sub build_list
-{
-   my $self = shift;
-   my ( $list, $target, $value ) = @_;
-
-   $target = "" if !defined $target;
-
-   push @{ $self->{buildlist}{$target}{$list} }, $value;
-}
-
-sub build_list_from_hints
-{
-   my $self = shift;
-   my ( $list, $hints, @keys ) = @_;
-
-   my %value;
-   @value{@keys} = @{$hints}{@keys};
-
-   $self->build_list( $list, $hints->{target_name_folded}, \%value );
-}
-
-sub pull_list
-{
-   my $self = shift;
-   my ( $list, $target ) = @_;
-
-   $target = "" if !defined $target;
-
-   return delete $self->{buildlist}{$target}{$list};
-}
-
-sub pull_list_and_invoke
-{
-   my $self = shift;
-   my ( $list, $message, $hints ) = @_;
-
-   my $values = $self->pull_list( $list, $hints->{target_name_folded} );
-
-   my %hints = (
-      %$hints,
-      synthesized => 1,
-      $list => $values,
-   );
-
-   $self->invoke( "on_message_$list", $message, \%hints ) and $hints{handled} = 1;
-   $self->invoke( "on_message", $list, $message, \%hints ) and $hints{handled} = 1;
-
-   return $hints{handled};
-}
-
 ############################
 # Message handling methods #
 ############################
+
+=head1 IRC v3.1 CAPABILITIES
+
+The following methods relate to IRC v3.1 capabilities negotiations.
+
+=cut
+
+sub on_message_cap_LS
+{
+   my $self = shift;
+   my ( $message, $hints ) = @_;
+
+   my $supported = $self->{caps_supported} = $hints->{caps};
+
+   my @request = grep { $supported->{$_} } @{$self->{use_caps}};
+
+   if( @request ) {
+      $self->{caps_enabled} = { map { $_ => undef } @request };
+      $self->send_message( "CAP", undef, "REQ", join( " ", @request ) );
+   }
+   else {
+      $self->send_message( "CAP", undef, "END" );
+   }
+
+   return 1;
+}
+
+*on_message_cap_ACK = *on_message_cap_NAK = \&_on_message_cap_reply;
+sub _on_message_cap_reply
+{
+   my $self = shift;
+   my ( $message, $hints ) = @_;
+   my $ack = $hints->{verb} eq "ACK";
+
+   $self->{caps_enabled}{$_} = $ack for keys %{ $hints->{caps} };
+
+   # Are any outstanding
+   !defined and return 1 for values %{ $self->{caps_enabled} };
+
+   $self->send_message( "CAP", undef, "END" );
+   return 1;
+}
+
+=head2 $caps = $irc->caps_supported
+
+Returns a HASH whose keys give the capabilities listed by the server as
+supported in its C<CAP LS> response. If the server ignored the C<CAP>
+negotiation then this method returns C<undef>.
+
+=cut
+
+sub caps_supported
+{
+   my $self = shift;
+   return $self->{caps_supported};
+}
+
+=head2 $supported = $irc->cap_supported( $cap )
+
+Returns a boolean indicating if the server supports the named capability.
+
+=cut
+
+sub cap_supported
+{
+   my $self = shift;
+   my ( $cap ) = @_;
+   return !!$self->{caps_supported}{$cap};
+}
+
+=head2 $caps = $irc->caps_enabled
+
+Returns a HASH whose keys give the capabilities successfully enabled by the
+server as part of the C<CAP REQ> login sequence. If the server ignored the
+C<CAP> negotiation then this method returns C<undef>.
+
+=cut
+
+sub caps_enabled
+{
+   my $self = shift;
+   return $self->{caps_enabled};
+}
+
+=head2 $enabled = $irc->cap_enabled( $cap )
+
+Returns a boolean indicating if the client successfully enabled the named
+capability.
+
+=cut
+
+sub cap_enabled
+{
+   my $self = shift;
+   my ( $cap ) = @_;
+   return !!$self->{caps_enabled}{$cap};
+}
+
+=head1 MESSAGE HANDLING
+
+=cut
 
 sub on_message_NICK
 {
@@ -368,188 +440,6 @@ sub on_message_RPL_WELCOME
 
    # Don't eat it
    return 0;
-}
-
-=head2 RPL_WHOREPLY and RPL_ENDOFWHO
-
-These messages will be collected up, per channel, and formed into a single
-synthesized event called C<who>.
-
-Its hints hash will contain an extra key, C<who>, which will be an ARRAY ref
-containing the lines of the WHO reply. Each line will be a HASH reference
-containing:
-
-=over 8
-
-=item user_ident
-
-=item user_host
-
-=item user_server
-
-=item user_nick
-
-=item user_nick_folded
-
-=item user_flags
-
-=back
-
-=cut
-
-sub on_message_RPL_ENDOFWHO
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-   $self->pull_list_and_invoke( "who", $message, $hints );
-}
-
-sub on_message_RPL_WHOREPLY
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-   $self->build_list_from_hints( "who", $hints,
-      qw( user_ident user_host user_server user_nick user_nick_folded user_flags )
-   );
-   return 1;
-}
-
-=head2 RPL_NAMEREPLY and RPL_ENDOFNAMES
-
-These messages will be collected up, per channel, and formed into a single
-synthesized event called C<names>.
-
-Its hints hash will contain an extra key, C<names>, which will be an ARRAY ref
-containing the usernames in the channel. Each will be a HASH reference
-containing:
-
-=over 8
-
-=item nick
-
-=item flag
-
-=back
-
-=cut
-
-sub on_message_RPL_NAMEREPLY
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-
-   $self->build_list( "names", $hints->{target_name_folded}, $_ ) foreach @{ $hints->{names} };
-
-   return 1;
-}
-
-sub on_message_RPL_ENDOFNAMES
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-
-   my $names = $self->pull_list( "names", $hints->{target_name_folded} );
-
-   my $prefixflag_re = $self->isupport( 'prefixflag_re' );
-   my $re = qr/^($prefixflag_re)?(.*)$/;
-
-   my %names;
-
-   foreach my $name ( @$names ) {
-      my ( $flag, $nick ) = $name =~ $re or next;
-
-      $flag ||= ''; # make sure it's defined
-
-      $names{ $self->casefold_name( $nick ) } = { nick => $nick, flag => $flag };
-   }
-
-   my %hints = (
-      %$hints,
-      synthesized => 1,
-      names => \%names,
-   );
-
-   $self->invoke( "on_message_names", $message, \%hints ) and $hints{handled} = 1;
-   $self->invoke( "on_message", "names", $message, \%hints ) and $hints{handled} = 1;
-
-   return $hints{handled};
-}
-
-=head2 RPL_BANLIST and RPL_ENDOFBANS
-
-These messages will be collected up, per channel, and formed into a single
-synthesized event called C<bans>.
-
-Its hints hash will contain an extra key, C<bans>, which will be an ARRAY ref
-containing the ban lines. Each line will be a HASH reference containing:
-
-=over 8
-
-=item mask
-
-User mask of the ban
-
-=item by_nick
-
-=item by_nick_folded
-
-Nickname of the user who set the ban
-
-=item timestamp
-
-UNIX timestamp the ban was created
-
-=back
-
-=cut
-
-sub on_message_RPL_BANLIST
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-   $self->build_list_from_hints( "bans", $hints,
-      qw( mask by_nick by_nick_folded timestamp )
-   );
-   return 1;
-}
-
-sub on_message_RPL_ENDOFBANS
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-   $self->pull_list_and_invoke( "bans", $message, $hints );
-}
-
-=head2 RPL_MOTD, RPL_MOTDSTART and RPL_ENDOFMOTD
-
-These messages will be collected up into a synthesized event called C<motd>.
-
-Its hints hash will contain an extra key, C<motd>, which will be an ARRAY ref
-containing the lines of the MOTD.
-
-=cut
-
-sub on_message_RPL_MOTD
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-   $self->build_list( "motd", undef, $hints->{text} );
-   return 1;
-}
-
-sub on_message_RPL_MOTDSTART
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-   $self->build_list( "motd", undef, $hints->{text} );
-   return 1;
-}
-
-sub on_message_RPL_ENDOFMOTD
-{
-   my $self = shift;
-   my ( $message, $hints ) = @_;
-   $self->pull_list_and_invoke( "motd", $message, $hints );
 }
 
 =head1 SEE ALSO

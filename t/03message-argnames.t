@@ -56,4 +56,9 @@ test_argnames "319",
    ":server 319 YourNick Someone :#foo #bar #splot #wibble",
    args  => { target_name => 'Someone', channels => ['#foo', '#bar', '#splot', '#wibble'] };
 
+{
+   my $msg = Protocol::IRC::Message->new_from_line( ":server 372 YourNick :- message here -" );
+   is( $msg->gate_disposition, "-motd", '372 gate_disposition' );
+}
+
 done_testing;

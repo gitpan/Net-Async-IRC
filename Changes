@@ -1,5 +1,13 @@
 Revision history for Net-Async-IRC
 
+0.08    2014/01/20 01:52:18
+        [CHANGES]
+         * Directly subclass IO::Async::Stream instead of IO::Async::Protocol
+         * Implement IRCv3.1 CAP negotiation
+         * Much improved handling of command/response gating
+         * Implement 'whois' message gate
+         * Futures-first documentation and testing
+
 0.07    CHANGES:
          * Much splitting of non-async logic out of NaIRC into Protocol::IRC
            tree

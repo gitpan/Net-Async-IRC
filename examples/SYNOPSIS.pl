@@ -15,12 +15,8 @@
 
  $irc->login(
     nick => "MyName",
-
     host => "irc.example.org",
+ )->get;
 
-    on_login => sub {
-       $irc->send_message( "PRIVMSG", undef, "YourName", "Hello world!" );
-    },
- );
-
+ $irc->send_message( "PRIVMSG", undef, "YourName", "Hello world!" );
  $loop->loop_forever;

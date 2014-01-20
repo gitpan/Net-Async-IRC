@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2010-2013 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2010-2014 -- leonerd@leonerd.org.uk
 
 package Protocol::IRC;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Carp;
 
@@ -79,6 +79,33 @@ dispatched and handled identically to regular primary events, detailed above.
 
 If any handler of the synthesized message returns true, then this marks the
 primary message handled as well.
+
+If a message is received that has a gating disposition, extra processing is
+applied to it after the processing above. The effect on its gate is given as
+a string (one of C<more>, C<done>, C<fail>) to handlers in the following
+places:
+
+=over 4
+
+=item 1.
+
+A method called C<on_message_gate_EFFECT_GATE>
+
+ $irc->on_message_gate_EFFECT_GATE( $message, \%hints )
+
+=item 2.
+
+A method called C<on_message_gate_EFFECT>
+
+ $irc->on_message_gate_EFFECT( 'GATE', $message, \%hints )
+
+=item 3.
+
+A method called C<on_message_gate>
+
+ $irc->on_message_gate( 'EFFECT', 'GATE', $message, \%hints )
+
+=back
 
 =head2 Message Hints
 
@@ -209,6 +236,17 @@ sub on_read
          my $numeric = $message->command;
          $self->invoke( "on_message_$numeric", $message, $hints ) and $hints->{handled} = 1;
          $self->invoke( "on_message", $numeric, $message, $hints ) and $hints->{handled} = 1;
+      }
+
+      if( my $disp = $message->gate_disposition ) {
+         my ( $type, $gate ) = $disp =~ m/^([-+!])(.*)$/;
+         my $effect = ( $type eq "-" ? "more" :
+                        $type eq "+" ? "done" :
+                        $type eq "!" ? "fail" : die "TODO" );
+
+         $self->invoke( "on_message_gate_${effect}_$gate", $message, $hints ) and $hints->{handled} = 1;
+         $self->invoke( "on_message_gate_$effect", $gate, $message, $hints ) and $hints->{handled} = 1;
+         $self->invoke( "on_message_gate", $effect, $gate, $message, $hints ) and $hints->{handled} = 1;
       }
    }
 }

@@ -19,13 +19,10 @@ SYNOPSIS
 
      $irc->login(
         nick => "MyName",
-
         host => "irc.example.org",
+     )->get;
 
-        on_login => sub {
-           $irc->send_message( "PRIVMSG", undef, "YourName", "Hello world!" );
-        },
-     );
+     $irc->send_message( "PRIVMSG", undef, "YourName", "Hello world!" );
 
      $loop->loop_forever;
 
@@ -57,8 +54,13 @@ PARAMETERS
             calling `change_nick'. Changing the other properties will not
             take effect until the next login.
 
+    use_caps => ARRAY of STRING
+            Attempts to negotiate IRC v3.1 CAP at connect time. The array
+            gives the names of capabilities which will be requested, if the
+            server supports them.
+
 METHODS
-  $irc->connect( %args )
+  $irc->connect( %args ) ==> $irc
     Connects to the IRC server. This method does not perform the complete
     IRC login sequence; for that see instead the `login' method.
 
@@ -68,6 +70,13 @@ METHODS
     service => STRING or NUMBER
             Optional. Port number or service name of the IRC server.
             Defaults to 6667.
+
+    Any other arguments are passed into the underlying `IO::Async::Loop'
+    `connect' method.
+
+  $irc->connect( %args )
+    The following additional arguments are used to provide continuations
+    when not returning a Future.
 
     on_connected => CODE
             Continuation to invoke once the connection has been established.
@@ -82,10 +91,7 @@ METHODS
 
              $on_error->( $errormsg )
 
-    Any other arguments are passed into the underlying `IO::Async::Loop'
-    `connect' method.
-
-  $irc->login( %args )
+  $irc->login( %args ) ==> $irc
     Logs in to the IRC network, connecting first using the `connect' method
     if required. Takes the following named arguments:
 
@@ -98,70 +104,46 @@ METHODS
     pass => STRING
             Server password to connect with.
 
+    Any other arguments that are passed, are forwarded to the `connect'
+    method if it is required; i.e. if `login' is invoked when not yet
+    connected to the server.
+
+  $irc->login( %args )
+    The following additional arguments are used to provide continuations
+    when not returning a Future.
+
     on_login => CODE
             A continuation to invoke once login is successful.
 
              $on_login->( $irc )
-
-    Any other arguments that are passed, are forwarded to the `connect'
-    method if it is required; i.e. if `login' is invoked when not yet
-    connected to the server.
 
   $irc->change_nick( $newnick )
     Requests to change the nick. If unconnected, the change happens
     immediately to the stored defaults. If logged in, sends a `NICK' command
     to the server, which may suceed or fail at a later point.
 
-  RPL_WHOREPLY and RPL_ENDOFWHO
-    These messages will be collected up, per channel, and formed into a
-    single synthesized event called `who'.
+IRC v3.1 CAPABILITIES
+    The following methods relate to IRC v3.1 capabilities negotiations.
 
-    Its hints hash will contain an extra key, `who', which will be an ARRAY
-    ref containing the lines of the WHO reply. Each line will be a HASH
-    reference containing:
+  $caps = $irc->caps_supported
+    Returns a HASH whose keys give the capabilities listed by the server as
+    supported in its `CAP LS' response. If the server ignored the `CAP'
+    negotiation then this method returns `undef'.
 
-    user_ident
-    user_host
-    user_server
-    user_nick
-    user_nick_folded
-    user_flags
+  $supported = $irc->cap_supported( $cap )
+    Returns a boolean indicating if the server supports the named
+    capability.
 
-  RPL_NAMEREPLY and RPL_ENDOFNAMES
-    These messages will be collected up, per channel, and formed into a
-    single synthesized event called `names'.
+  $caps = $irc->caps_enabled
+    Returns a HASH whose keys give the capabilities successfully enabled by
+    the server as part of the `CAP REQ' login sequence. If the server
+    ignored the `CAP' negotiation then this method returns `undef'.
 
-    Its hints hash will contain an extra key, `names', which will be an
-    ARRAY ref containing the usernames in the channel. Each will be a HASH
-    reference containing:
+  $enabled = $irc->cap_enabled( $cap )
+    Returns a boolean indicating if the client successfully enabled the
+    named capability.
 
-    nick
-    flag
-
-  RPL_BANLIST and RPL_ENDOFBANS
-    These messages will be collected up, per channel, and formed into a
-    single synthesized event called `bans'.
-
-    Its hints hash will contain an extra key, `bans', which will be an ARRAY
-    ref containing the ban lines. Each line will be a HASH reference
-    containing:
-
-    mask    User mask of the ban
-
-    by_nick
-    by_nick_folded
-            Nickname of the user who set the ban
-
-    timestamp
-            UNIX timestamp the ban was created
-
-  RPL_MOTD, RPL_MOTDSTART and RPL_ENDOFMOTD
-    These messages will be collected up into a synthesized event called
-    `motd'.
-
-    Its hints hash will contain an extra key, `motd', which will be an ARRAY
-    ref containing the lines of the MOTD.
-
+MESSAGE HANDLING
 SEE ALSO
     *   http://tools.ietf.org/html/rfc2812 - Internet Relay Chat: Client
         Protocol

@@ -25,7 +25,7 @@ my $lag;
 my $pingout;
 
 my $irc = Net::Async::IRC->new(
-   transport => IO::Async::Stream->new( handle => $S1 ),
+   handle => $S1,
    on_message => sub { "IGNORE" },
 
    pingtime => 2,

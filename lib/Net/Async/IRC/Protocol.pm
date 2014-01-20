@@ -8,9 +8,9 @@ package Net::Async::IRC::Protocol;
 use strict;
 use warnings;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
-use base qw( IO::Async::Protocol::Stream Protocol::IRC );
+use base qw( IO::Async::Stream Protocol::IRC );
 
 use Carp;
 

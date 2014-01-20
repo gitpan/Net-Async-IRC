@@ -1,5 +1,6 @@
 Build.PL
 Changes
+examples/client.pl
 examples/SYNOPSIS.pl
 lib/Net/Async/IRC.pm
 lib/Net/Async/IRC/Message.pm
@@ -24,8 +25,10 @@ t/13protocol-text.t
 t/14protocol-encoding.t
 t/20client-isupport.t
 t/21client-chanmodes.t
+t/22client-cap.t
+t/23client-gates.t
 t/30client-connect.t
-t/32client-lists.t
+t/31client-cap.t
 t/33client-nick.t
-t/34client-pingpong.t
+t/50client-pingpong.t
 t/99pod.t

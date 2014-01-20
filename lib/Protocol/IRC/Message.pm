@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2008-2013 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2008-2014 -- leonerd@leonerd.org.uk
 
 package Protocol::IRC::Message;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Carp;
 our @CARP_NOT = qw( Net::Async::IRC );
@@ -354,27 +354,6 @@ $ARG_NAMES{$_} = { target_name => 0 } for qw(
    JOIN LIST NAMES WHO WHOIS WHOWAS
 );
 
-while( <DATA> ) {
-   chomp;
-   my ( $numname, $args ) = split m/\s*\|\s*/, $_ or next;
-   my ( $num, $name ) = split m/=/, $numname;
-
-   my $index = 0;
-   my %args = map {
-      if( m/^(.*)=(.*)$/ ) {
-         $index = $1;
-         ( $2 => $1 )
-      }
-      else {
-         ( $_ => ++$index );
-      }
-   } split m/,/, $args;
-
-   $NUMERIC_NAMES{$num} = $name;
-   $ARG_NAMES{$num} = \%args;
-}
-close DATA;
-
 # TODO: 472 ERR_UNKNOWNMODE: <char> :is unknown mode char to me for <channel>
 # How to parse this one??
 
@@ -488,11 +467,68 @@ sub named_args
    return \%named_args;
 }
 
+=head2 $disp = $message->gate_disposition
+
+Returns the "gating disposition" of the message. This defines how a reply
+message from the server combines with other messages in response of a command
+sent by the client. The disposition is either C<undef>, or a string consisting
+of a type symbol and a gate name. If defined, the symbol defines what effect
+it has on the gate name.
+
+=over 4
+
+=item -GATE
+
+Adds more information to the response for that gate, but doesn't yet complete
+it.
+
+=item +GATE
+
+Completes the gate with a successful result.
+
+=item !GATE
+
+Completes the gate with a failure result.
+
+=back
+
+=cut
+
+my %GATE_DISPOSITIONS;
+
+sub gate_disposition
+{
+   my $self = shift;
+   return $GATE_DISPOSITIONS{ $self->command };
+}
+
 =head1 AUTHOR
 
 Paul Evans <leonerd@leonerd.org.uk>
 
 =cut
+
+while( <DATA> ) {
+   chomp;
+   my ( $numname, $args, $gating ) = split m/\s*\|\s*/, $_ or next;
+   my ( $num, $name ) = split m/=/, $numname;
+
+   my $index = 0;
+   my %args = map {
+      if( m/^(.*)=(.*)$/ ) {
+         $index = $1;
+         ( $2 => $1 )
+      }
+      else {
+         ( $_ => ++$index );
+      }
+   } split m/,/, $args;
+
+   $NUMERIC_NAMES{$num} = $name;
+   $ARG_NAMES{$num} = \%args;
+   $GATE_DISPOSITIONS{$num} = $gating if defined $gating;
+}
+close DATA;
 
 0x55AA;
 
@@ -525,19 +561,19 @@ __DATA__
 306=RPL_NOWAWAY         | text
 
 307=RPL_USERIP          | target_name
-311=RPL_WHOISUSER       | target_name,ident,host,flags,realname
-312=RPL_WHOISSERVER     | target_name,server,serverinfo
-313=RPL_WHOISOPERATOR   | target_name,text
-315=RPL_ENDOFWHO        | target_name
+311=RPL_WHOISUSER       | target_name,ident,host,flags,realname | -whois
+312=RPL_WHOISSERVER     | target_name,server,serverinfo         | -whois
+313=RPL_WHOISOPERATOR   | target_name,text                      | -whois
+315=RPL_ENDOFWHO        | target_name                           | +who
 314=RPL_WHOWASUSER      | target_name,ident,host,flags,realname
-317=RPL_WHOISIDLE       | target_name,idle_time
-318=RPL_ENDOFWHOIS      | target_name
-319=RPL_WHOISCHANNELS   | target_name,2@=channels
-320=RPL_WHOISSPECIAL    | target_name
+317=RPL_WHOISIDLE       | target_name,idle_time                 | -whois
+318=RPL_ENDOFWHOIS      | target_name                           | +whois
+319=RPL_WHOISCHANNELS   | target_name,2@=channels               | -whois
+320=RPL_WHOISSPECIAL    | target_name                           | -whois
 324=RPL_CHANNELMODEIS   | target_name,modechars,3..=modeargs
 328=RPL_CHANNEL_URL     | target_name,text
 329=RPL_CHANNELCREATED  | target_name,timestamp
-330=RPL_WHOISACCOUNT    | target_name,whois_nick,login_name
+330=RPL_WHOISACCOUNT    | target_name,whois_nick,login_name     | -whois
 
 331=RPL_NOTOPIC         | target_name
 332=RPL_TOPIC           | target_name,text
@@ -549,18 +585,19 @@ __DATA__
 348=RPL_EXCEPTLIST      | target_name,except_mask
 349=RPL_ENDOFEXCEPTLIST | target_name
 
-352=RPL_WHOREPLY        | target_name,user_ident,user_host,user_server,user_nick,user_flags,text
-353=RPL_NAMEREPLY       | 2=target_name,3@=names
+352=RPL_WHOREPLY        | target_name,user_ident,user_host,user_server,user_nick,user_flags,text | -who
+353=RPL_NAMEREPLY       | 2=target_name,3@=names | -names
 
-366=RPL_ENDOFNAMES      | target_name
-367=RPL_BANLIST         | target_name,mask,by_nick,timestamp
-368=RPL_ENDOFBANLIST    | target_name
+366=RPL_ENDOFNAMES      | target_name | +names
+367=RPL_BANLIST         | target_name,mask,by_nick,timestamp | -bans
+368=RPL_ENDOFBANLIST    | target_name | +bans
 369=RPL_ENDOFWHOWAS     | target_name
 
-372=RPL_MOTD            | text
-375=RPL_MOTDSTART       | text
-376=RPL_ENDOFMOTD       |
-378=RPL_WHOISHOST       | target_name,text
+372=RPL_MOTD            | text | -motd
+375=RPL_MOTDSTART       | text | -motd
+376=RPL_ENDOFMOTD       |      | +motd
+
+378=RPL_WHOISHOST       | target_name,text | -whois
 
 401=ERR_NOSUCHNICK              | target_name,text
 402=ERR_NOSUCHSERVER            | server_name,text

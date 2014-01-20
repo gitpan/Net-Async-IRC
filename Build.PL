@@ -7,7 +7,7 @@ my $build = Module::Build->new(
    module_name => 'Net::Async::IRC',
    requires => {
       'IO::Async::Loop' => '0.54', # ->connect Future
-      'IO::Async::Protocol::LineStream' => '0.34',
+      'IO::Async::Stream' => '0.59', # Protocol deprecation
       'Time::HiRes' => 0,
       'perl' => '5.010', # //, mro c3
    },

@@ -19,7 +19,7 @@ testing_loop( $loop );
 my ( $S1, $S2 ) = IO::Async::OS->socketpair() or die "Cannot create socket pair - $!";
 
 my $irc = Net::Async::IRC->new(
-   transport => IO::Async::Stream->new( handle => $S1 ),
+   handle => $S1,
 
    user => "defaultuser",
    realname => "Default Real name",
@@ -36,11 +36,7 @@ is( $irc->nick, "FirstNick", 'Initial nick is set' );
 ok( $irc->is_nick_me( "FirstNick" ), 'Client recognises initial nick' );
 ok( !$irc->is_nick_me( "SomeoneElse" ), 'Client does not recognise other nick' );
 
-my $logged_in = 0;
-
-$irc->login(
-   on_login => sub { $logged_in = 1 },
-);
+my $login_f = $irc->login;
 
 my $serverstream = "";
 
@@ -51,9 +47,8 @@ is( $serverstream, "USER defaultuser 0 * :Default Real name$CRLF" .
 
 $S2->syswrite( ":irc.example.com 001 FirstNick :Welcome to IRC FirstNick!defaultuser\@your.host.here$CRLF" );
 
-wait_for { $logged_in };
-
-ok( $logged_in, 'Client receives logged in event' );
+wait_for { $login_f->is_ready };
+$login_f->get;
 
 $irc->change_nick( "SecondNick" );
 
