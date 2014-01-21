@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2010-2013 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2010-2014 -- leonerd@leonerd.org.uk
 
 package Net::Async::IRC::Protocol;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 use base qw( IO::Async::Stream Protocol::IRC );
 
@@ -234,7 +234,7 @@ sub is_connected
 {
    my $self = shift;
    return 0 unless my $connect_f = $self->{connect_f};
-   return $connect_f->is_ready and !$connect_f->failure;
+   return $connect_f->is_ready && !$connect_f->failure;
 }
 
 =head2 $loggedin = $irc->is_loggedin
@@ -248,7 +248,7 @@ sub is_loggedin
 {
    my $self = shift;
    return 0 unless my $login_f = $self->{login_f};
-   return $login_f->is_ready and !$login_f->failure;
+   return $login_f->is_ready && !$login_f->failure;
 }
 
 sub on_read

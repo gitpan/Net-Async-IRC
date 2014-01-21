@@ -147,6 +147,7 @@ sub on_message
 {
    my $self = shift;
    my ( $command, $message, $hints ) = @_;
+   die "$command MESSAGE UNSYNTHESIZED BUT UNHANLDED" if !$hints->{synthesized} and !$hints->{handled};
    return 0 unless $hints->{synthesized};
    push @messages, [ $command, $message, $hints ];
    return 1;

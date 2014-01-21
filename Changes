@@ -1,5 +1,17 @@
 Revision history for Net-Async-IRC
 
+0.09    2014/01/21 12:21:41
+        [CHANGES]
+         * Removed now-dead NaIRC::Message subclass
+
+        [BUGFIXES]
+         * Ensure that handled gated commands don't appear as unhnandled to
+           the default 'on_message' handler
+         * Fix return EXPR and EXPR operator precedence (RT87260)
+         * Correctly set internal nick state when logging in after an
+           ERR_NICKINUSE error (RT90487)
+         * MSWin32 lacks a getpwnam() - use Win32::LoginName() instead
+
 0.08    2014/01/20 01:52:18
         [CHANGES]
          * Directly subclass IO::Async::Stream instead of IO::Async::Protocol

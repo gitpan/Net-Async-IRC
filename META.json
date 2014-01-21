@@ -34,26 +34,23 @@
    "provides" : {
       "Net::Async::IRC" : {
          "file" : "lib/Net/Async/IRC.pm",
-         "version" : "0.08"
-      },
-      "Net::Async::IRC::Message" : {
-         "file" : "lib/Net/Async/IRC/Message.pm"
+         "version" : "0.09"
       },
       "Net::Async::IRC::Protocol" : {
          "file" : "lib/Net/Async/IRC/Protocol.pm",
-         "version" : "0.08"
+         "version" : "0.09"
       },
       "Protocol::IRC" : {
          "file" : "lib/Protocol/IRC.pm",
-         "version" : "0.03"
+         "version" : "0.04"
       },
       "Protocol::IRC::Client" : {
          "file" : "lib/Protocol/IRC/Client.pm",
-         "version" : "0.03"
+         "version" : "0.04"
       },
       "Protocol::IRC::Message" : {
          "file" : "lib/Protocol/IRC/Message.pm",
-         "version" : "0.03"
+         "version" : "0.04"
       }
    },
    "release_status" : "stable",
@@ -62,5 +59,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "0.08"
+   "version" : "0.09"
 }

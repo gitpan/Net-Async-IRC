@@ -8,7 +8,7 @@ package Net::Async::IRC;
 use strict;
 use warnings;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 # We need to use C3 MRO to make the ->isupport etc.. methods work properly
 use mro 'c3';
@@ -17,6 +17,8 @@ use base qw( Net::Async::IRC::Protocol Protocol::IRC::Client );
 use Carp;
 
 use Socket qw( SOCK_STREAM );
+
+use constant HAVE_MSWIN32 => ( $^O eq "MSWin32" );
 
 =head1 NAME
 
@@ -64,6 +66,11 @@ sub _init
 {
    my $self = shift;
    $self->SUPER::_init( @_ );
+
+   $self->{user} = $ENV{LOGNAME} ||
+      ( HAVE_MSWIN32 ? Win32::LoginName() : getpwuid($>) );
+
+   $self->{realname} = "Net::Async::IRC client $VERSION";
 }
 
 =head1 PARAMETERS
@@ -81,7 +88,7 @@ The following named parameters may be passed to C<new> or C<configure>:
 Connection details. See also C<connect>, C<login>.
 
 If C<user> is not supplied, it will default to either C<$ENV{LOGNAME}> or the
-current user's name as supplied by C<getpwuid()>.
+current user's name as supplied by C<getpwuid()> or C<Win32::LoginName()>.
 
 If unconnected, changing these properties will set the default values to use
 when logging in.
@@ -110,14 +117,6 @@ sub configure
 
    if( exists $args{nick} ) {
       $self->_set_nick( delete $args{nick} );
-   }
-
-   if( !defined $self->{user} ) {
-      $self->{user} = $ENV{LOGNAME} || getpwuid($>);
-   }
-
-   if( !defined $self->{realname} ) {
-      $self->{realname} = "Net::Async::IRC client $VERSION";
    }
 
    $self->SUPER::configure( %args );
@@ -434,6 +433,9 @@ sub on_message_RPL_WELCOME
 {
    my $self = shift;
    my ( $message ) = @_;
+
+   # set our nick to be what the server logged us in as
+   $self->_set_nick( $message->{args}[0] );
 
    $self->{on_login}->( $self ) if defined $self->{on_login};
    undef $self->{on_login};

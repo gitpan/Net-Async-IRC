@@ -3,7 +3,6 @@ Changes
 examples/client.pl
 examples/SYNOPSIS.pl
 lib/Net/Async/IRC.pm
-lib/Net/Async/IRC/Message.pm
 lib/Net/Async/IRC/Protocol.pm
 lib/Protocol/IRC.pm
 lib/Protocol/IRC/Client.pm

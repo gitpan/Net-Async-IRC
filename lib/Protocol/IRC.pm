@@ -8,7 +8,7 @@ package Protocol::IRC;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use Carp;
 
@@ -81,7 +81,7 @@ If any handler of the synthesized message returns true, then this marks the
 primary message handled as well.
 
 If a message is received that has a gating disposition, extra processing is
-applied to it after the processing above. The effect on its gate is given as
+applied to it before the processing above. The effect on its gate is given as
 a string (one of C<more>, C<done>, C<fail>) to handlers in the following
 places:
 
@@ -229,15 +229,6 @@ sub on_read
          $hints->{"${k}_folded"} = $self->casefold_name( $hints->{$k} );
       }
 
-      $self->invoke( "on_message_$command", $message, $hints ) and $hints->{handled} = 1;
-      $self->invoke( "on_message", $command, $message, $hints ) and $hints->{handled} = 1;
-
-      if( !$hints->{handled} and $message->command ne $command ) { # numerics
-         my $numeric = $message->command;
-         $self->invoke( "on_message_$numeric", $message, $hints ) and $hints->{handled} = 1;
-         $self->invoke( "on_message", $numeric, $message, $hints ) and $hints->{handled} = 1;
-      }
-
       if( my $disp = $message->gate_disposition ) {
          my ( $type, $gate ) = $disp =~ m/^([-+!])(.*)$/;
          my $effect = ( $type eq "-" ? "more" :
@@ -247,6 +238,15 @@ sub on_read
          $self->invoke( "on_message_gate_${effect}_$gate", $message, $hints ) and $hints->{handled} = 1;
          $self->invoke( "on_message_gate_$effect", $gate, $message, $hints ) and $hints->{handled} = 1;
          $self->invoke( "on_message_gate", $effect, $gate, $message, $hints ) and $hints->{handled} = 1;
+      }
+
+      $self->invoke( "on_message_$command", $message, $hints ) and $hints->{handled} = 1;
+      $self->invoke( "on_message", $command, $message, $hints ) and $hints->{handled} = 1;
+
+      if( !$hints->{handled} and $message->command ne $command ) { # numerics
+         my $numeric = $message->command;
+         $self->invoke( "on_message_$numeric", $message, $hints ) and $hints->{handled} = 1;
+         $self->invoke( "on_message", $numeric, $message, $hints ) and $hints->{handled} = 1;
       }
    }
 }

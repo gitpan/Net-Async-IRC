@@ -8,7 +8,7 @@ package Protocol::IRC::Message;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use Carp;
 our @CARP_NOT = qw( Net::Async::IRC );

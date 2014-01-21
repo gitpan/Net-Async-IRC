@@ -45,7 +45,7 @@ PARAMETERS
 
             If `user' is not supplied, it will default to either
             `$ENV{LOGNAME}' or the current user's name as supplied by
-            `getpwuid()'.
+            `getpwuid()' or `Win32::LoginName()'.
 
             If unconnected, changing these properties will set the default
             values to use when logging in.
