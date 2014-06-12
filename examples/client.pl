@@ -35,6 +35,8 @@ $irc->login(
    nick => $NICK,
 )->get;
 
+print "Now logged in...\n";
+
 my $stdin = IO::Async::Stream->new_for_stdin( on_read => sub {} );
 $loop->add( $stdin );
 

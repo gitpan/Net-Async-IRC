@@ -22,11 +22,20 @@ my $listensock = IO::Socket::INET->new( LocalAddr => 'localhost', Listen => 1 ) 
 
 my $addr = $listensock->sockname;
 
+my @errors;
+
 my $irc = Net::Async::IRC->new(
    user => "defaultuser",
    realname => "Default Real name",
 
    on_message => sub { "IGNORE" },
+
+   on_irc_error => sub {
+      my $self = shift;
+      my ( $err ) = @_;
+
+      push @errors, $err;
+   },
 );
 
 $loop->add( $irc );
@@ -79,5 +88,11 @@ ok( !$login_f->failure, 'Client logs in without failure' );
 ok( $logged_in, 'Client receives logged in event' );
 ok( $irc->is_connected, '$irc->is_connected' );
 ok( $irc->is_loggedin, '$irc->is_loggedin' );
+
+$newclient->syswrite( ":something invalid-here$CRLF" );
+
+wait_for { scalar @errors };
+
+ok( defined shift @errors, 'on_error invoked' );
 
 done_testing;

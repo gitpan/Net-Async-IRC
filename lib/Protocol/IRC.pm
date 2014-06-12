@@ -8,7 +8,7 @@ package Protocol::IRC;
 use strict;
 use warnings;
 
-our $VERSION = '0.04';
+our $VERSION = '0.10';
 
 use Carp;
 
@@ -190,6 +190,9 @@ sub on_read
 
    while( $_[0] =~ s/^(.*)\x0d\x0a// ) {
       my $line = $1;
+      # Ignore blank lines
+      next if !length $line;
+
       my $message = Protocol::IRC::Message->new_from_line( $line );
 
       my $command = $message->command_name;

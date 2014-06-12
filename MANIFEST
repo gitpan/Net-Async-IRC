@@ -22,10 +22,11 @@ t/11protocol-isupport.t
 t/12protocol-hints.t
 t/13protocol-text.t
 t/14protocol-encoding.t
-t/20client-isupport.t
-t/21client-chanmodes.t
-t/22client-cap.t
-t/23client-gates.t
+t/20client.t
+t/21client-isupport.t
+t/22client-chanmodes.t
+t/23client-cap.t
+t/24client-gates.t
 t/30client-connect.t
 t/31client-cap.t
 t/33client-nick.t

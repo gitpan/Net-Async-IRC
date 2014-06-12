@@ -1,5 +1,14 @@
 Revision history for Net-Async-IRC
 
+0.10    2014/06/12 02:02:58
+        [CHANGES]
+         * Ignore received blank lines
+         * Allow capture of IRC parse errors as custom error handling
+
+        [BUGFIXES]
+         * Ensure that connection close during login counts as a failure for
+           pending login futures
+
 0.09    2014/01/21 12:21:41
         [CHANGES]
          * Removed now-dead NaIRC::Message subclass

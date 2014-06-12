@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Test::Fatal;
+use Test::Fatal qw( lives_ok );
 
 my $CRLF = "\x0d\x0a"; # because \r\n isn't portable
 
@@ -33,6 +33,10 @@ is_deeply( [ $msg->args ], [ "YourNameHere", "Welcome to IRC YourNameHere!me\@yo
 $buffer = ":irc.example.com FOO$CRLF";
 $irc->on_read( $buffer );
 ok( $foo_received, '$foo_received after FOO message' );
+
+$buffer = "$CRLF$CRLF";
+lives_ok { $irc->on_read( $buffer ) } 'Blank lines does not die';
+is( length $buffer, 0, 'Blank lines still eat all buffer' );
 
 done_testing;
 
